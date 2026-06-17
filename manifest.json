@@ -1,23 +1,23 @@
 {
-  "id": "/",
+  "id": "./",
   "name": "Ithaca",
   "short_name": "Ithaca",
   "description": "Il dossier digitale del tuo viaggio",
-  "start_url": "/index.html#/home",
-  "scope": "/",
+  "start_url": "./index.html#/home",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#f6f4ef",
   "theme_color": "#12343b",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/assets/icons/icon-192.svg",
+      "src": "assets/icons/icon-192.svg",
       "sizes": "192x192",
       "type": "image/svg+xml",
       "purpose": "any maskable"
     },
     {
-      "src": "/assets/icons/icon-512.svg",
+      "src": "assets/icons/icon-512.svg",
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"

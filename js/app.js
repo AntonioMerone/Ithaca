@@ -11,7 +11,7 @@ function registerServiceWorker() {
   }
 
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/service-worker.js").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js").catch(() => {
       showToast("Cache offline non disponibile in questa sessione.");
     });
   });

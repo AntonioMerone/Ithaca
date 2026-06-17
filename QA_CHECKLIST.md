@@ -82,11 +82,40 @@ Checklist manuale per la prima release PWA di Ithaca.
 
 - [ ] Manifest valido e raggiungibile.
 - [ ] Service worker registrato.
-- [ ] Cache aggiornata a `ithaca-shell-v10`.
+- [ ] Cache aggiornata a `ithaca-shell-v11`.
 - [ ] App caricabile offline dopo primo caricamento.
 - [ ] Icone manifest 192x192 e 512x512 presenti.
 - [ ] Favicon presente.
 - [ ] Installabilita disponibile su localhost o HTTPS.
+
+## Release privata GitHub Pages
+
+- [ ] App pubblicata da GitHub Pages sulla cartella corretta.
+- [ ] URL GitHub Pages aperto da desktop.
+- [ ] URL GitHub Pages aperto da smartphone Android.
+- [ ] URL GitHub Pages aperto da iPhone/Safari.
+- [ ] `index.html` usa path relativi per CSS, JS, manifest e icone.
+- [ ] `manifest.json` usa `start_url` e `scope` relativi.
+- [ ] Il service worker usa cache `ithaca-shell-v11`.
+- [ ] Il service worker registra `./service-worker.js`.
+- [ ] La Home si apre da `https://USERNAME.github.io/Ithaca/#/home`.
+- [ ] Una pagina viaggio si apre da hash route senza 404 server.
+- [ ] La dashboard viaggio resta navigabile dopo refresh.
+- [ ] Installazione PWA Android.
+- [ ] Aggiunta a Home iPhone.
+- [ ] Creazione viaggio su smartphone.
+- [ ] Aggiunta spesa su smartphone.
+- [ ] Aggiunta tappa su smartphone.
+- [ ] Aggiunta task su smartphone.
+- [ ] Aggiunta nota su smartphone.
+- [ ] Dati locali preservati dopo refresh.
+- [ ] Export JSON su desktop.
+- [ ] Import JSON su desktop.
+- [ ] Reset dati con conferma.
+- [ ] Test offline dopo primo caricamento.
+- [ ] Nessun errore console desktop.
+- [ ] Nessun overflow mobile evidente.
+- [ ] Nessuna logica di update prompt o `skipWaiting` aggiunta al service worker.
 
 ## Responsive e accessibilita
 

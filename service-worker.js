@@ -1,37 +1,36 @@
-const CACHE_NAME = "ithaca-shell-v10";
+const CACHE_NAME = "ithaca-shell-v11";
 
 const APP_SHELL = [
-  "/",
-  "/index.html",
-  "/manifest.json",
-  "/assets/icons/favicon.svg",
-  "/assets/icons/icon-192.svg",
-  "/assets/icons/icon-512.svg",
-  "/css/reset.css",
-  "/css/variables.css",
-  "/css/base.css",
-  "/css/components.css",
-  "/css/layout.css",
-  "/js/app.js",
-  "/js/router.js",
-  "/js/storage.js",
-  "/js/utils.js",
-  "/js/views/homeView.js",
-  "/js/views/tripDashboardView.js",
-  "/js/views/timelineView.js",
-  "/js/views/budgetView.js",
-  "/js/views/checklistView.js",
-  "/js/views/notesView.js",
-  "/js/components/modal.js",
-  "/js/components/toast.js",
-  "/js/components/bottomNav.js"
+  "./",
+  "./index.html",
+  "./manifest.json",
+  "./assets/icons/favicon.svg",
+  "./assets/icons/icon-192.svg",
+  "./assets/icons/icon-512.svg",
+  "./css/reset.css",
+  "./css/variables.css",
+  "./css/base.css",
+  "./css/components.css",
+  "./css/layout.css",
+  "./js/app.js",
+  "./js/router.js",
+  "./js/storage.js",
+  "./js/utils.js",
+  "./js/views/homeView.js",
+  "./js/views/tripDashboardView.js",
+  "./js/views/timelineView.js",
+  "./js/views/budgetView.js",
+  "./js/views/checklistView.js",
+  "./js/views/notesView.js",
+  "./js/components/modal.js",
+  "./js/components/toast.js",
+  "./js/components/bottomNav.js"
 ];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
   );
-  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
