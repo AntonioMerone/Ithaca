@@ -1,5 +1,6 @@
-import { getTripById } from "../storage.js";
+import { getExpensesByTripId, getTripById } from "../storage.js";
 import {
+  calculateBudgetSummary,
   calculateCountdown,
   calculateTripDuration,
   determineTripStatus,
@@ -101,24 +102,6 @@ function getNextActions(status) {
   ];
 }
 
-function getBudgetSummary(trip) {
-  const expenses = Array.isArray(trip.expenses) ? trip.expenses : [];
-  const paid = expenses.reduce((total, expense) => {
-    return total + (expense.status === "paid" ? Number(expense.amount || 0) : 0);
-  }, 0);
-  const due = expenses.reduce((total, expense) => {
-    return total + (expense.status === "due" ? Number(expense.amount || 0) : 0);
-  }, 0);
-  const total = Number(trip.budgetTotal || 0);
-
-  return {
-    total,
-    paid,
-    due,
-    remaining: Math.max(total - paid, 0)
-  };
-}
-
 function renderMissingTrip() {
   return `
     <section class="page" aria-labelledby="trip-missing-title">
@@ -175,7 +158,8 @@ export function renderTripDashboardView({ params }) {
   const countdown = calculateCountdown(trip.startDate, trip.endDate);
   const status = determineTripStatus(trip.startDate, trip.endDate);
   const statusLabel = getStatusLabel(status);
-  const budget = getBudgetSummary(trip);
+  const expenses = getExpensesByTripId(trip.id);
+  const budget = calculateBudgetSummary(trip, expenses);
 
   return `
     <section class="page dashboard-page" aria-labelledby="trip-title">
@@ -196,7 +180,7 @@ export function renderTripDashboardView({ params }) {
         </div>
         <div class="dashboard-hero__budget">
           <span>Budget totale</span>
-          <strong>${formatCurrency(budget.total, trip.currency)}</strong>
+          <strong>${formatCurrency(budget.budgetTotal, trip.currency)}</strong>
         </div>
       </article>
 
@@ -211,11 +195,13 @@ export function renderTripDashboardView({ params }) {
         <article class="dashboard-widget">
           <h2 class="dashboard-widget__title">Budget</h2>
           <div class="metric-list">
-            ${renderMetric("Budget totale", formatCurrency(budget.total, trip.currency))}
-            ${renderMetric("Pagato", formatCurrency(budget.paid, trip.currency))}
-            ${renderMetric("Da pagare", formatCurrency(budget.due, trip.currency))}
+            ${renderMetric("Budget totale", formatCurrency(budget.budgetTotal, trip.currency))}
+            ${renderMetric("Pagato", formatCurrency(budget.paidTotal, trip.currency))}
+            ${renderMetric("Da pagare", formatCurrency(budget.unpaidTotal, trip.currency))}
             ${renderMetric("Rimanente", formatCurrency(budget.remaining, trip.currency))}
           </div>
+          ${budget.isOverBudget ? `<p class="budget-warning">Budget superato di ${formatCurrency(Math.abs(budget.difference), trip.currency)}</p>` : ""}
+          <a class="button button--ghost button--small" href="${basePath}/budget">Apri budget</a>
         </article>
 
         ${renderSectionWidget({

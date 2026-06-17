@@ -3,7 +3,8 @@ import { generateId } from "./utils.js";
 const STORAGE_PREFIX = "odysseus";
 const DATA_KEY = "data";
 const DEFAULT_DATA = {
-  trips: []
+  trips: [],
+  expenses: []
 };
 
 function keyFor(key) {
@@ -14,7 +15,8 @@ function normalizeData(data) {
   return {
     ...DEFAULT_DATA,
     ...(data && typeof data === "object" ? data : {}),
-    trips: Array.isArray(data?.trips) ? data.trips : []
+    trips: Array.isArray(data?.trips) ? data.trips : [],
+    expenses: Array.isArray(data?.expenses) ? data.expenses : []
   };
 }
 
@@ -108,6 +110,74 @@ export function deleteTrip(id) {
   const data = getData();
   const initialCount = data.trips.length;
   data.trips = data.trips.filter((trip) => trip.id !== id);
+  data.expenses = data.expenses.filter((expense) => expense.tripId !== id);
   saveData(data);
   return data.trips.length !== initialCount;
+}
+
+export function getExpenses() {
+  return getData().expenses;
+}
+
+export function getExpensesByTripId(tripId) {
+  return getExpenses().filter((expense) => expense.tripId === tripId);
+}
+
+export function getExpenseById(id) {
+  return getExpenses().find((expense) => expense.id === id) || null;
+}
+
+export function createExpense(expenseData) {
+  const data = getData();
+  const now = new Date().toISOString();
+  const expense = {
+    id: generateId("expense"),
+    tripId: "",
+    name: "",
+    amount: 0,
+    category: "other",
+    status: "unpaid",
+    date: "",
+    notes: "",
+    ...expenseData,
+    createdAt: now,
+    updatedAt: now
+  };
+
+  data.expenses = [expense, ...data.expenses];
+  saveData(data);
+  return expense;
+}
+
+export function updateExpense(id, updates) {
+  const data = getData();
+  let updatedExpense = null;
+
+  data.expenses = data.expenses.map((expense) => {
+    if (expense.id !== id) {
+      return expense;
+    }
+
+    updatedExpense = {
+      ...expense,
+      ...updates,
+      id: expense.id,
+      tripId: expense.tripId,
+      createdAt: expense.createdAt,
+      updatedAt: new Date().toISOString()
+    };
+
+    return updatedExpense;
+  });
+
+  saveData(data);
+  return updatedExpense;
+}
+
+export function deleteExpense(id) {
+  const data = getData();
+  const initialCount = data.expenses.length;
+  data.expenses = data.expenses.filter((expense) => expense.id !== id);
+  saveData(data);
+  return data.expenses.length !== initialCount;
 }

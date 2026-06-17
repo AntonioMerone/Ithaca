@@ -5,6 +5,19 @@ export function generateId(prefix = "id") {
 
 export const createId = generateId;
 
+export const EXPENSE_CATEGORIES = [
+  "flights",
+  "accommodation",
+  "transport",
+  "activities",
+  "food",
+  "extras",
+  "emergencies",
+  "other"
+];
+
+export const EXPENSE_STATUSES = ["paid", "unpaid"];
+
 function parseDate(value) {
   if (!value) {
     return null;
@@ -46,9 +59,9 @@ export function formatDate(value, locale = "it-IT") {
 export function formatCurrency(value, currency = "EUR", locale = "it-IT") {
   const amount = Number(value || 0);
   const symbol = {
-    EUR: "€",
+    EUR: "\u20ac",
     USD: "$",
-    GBP: "£"
+    GBP: "\u00a3"
   }[currency] || currency;
 
   if (locale !== "it-IT") {
@@ -66,6 +79,61 @@ export function formatCurrency(value, currency = "EUR", locale = "it-IT") {
   const decimalPart = parts[1] ? `,${parts[1]}` : "";
 
   return `${sign}${integerPart}${decimalPart} ${symbol}`;
+}
+
+export function calculateBudgetSummary(trip, expenses = []) {
+  const budgetTotal = Number(trip?.budgetTotal || 0);
+  const paidTotal = expenses.reduce((total, expense) => {
+    return total + (expense.status === "paid" ? Number(expense.amount || 0) : 0);
+  }, 0);
+  const unpaidTotal = expenses.reduce((total, expense) => {
+    return total + (expense.status === "unpaid" ? Number(expense.amount || 0) : 0);
+  }, 0);
+  const plannedTotal = paidTotal + unpaidTotal;
+  const difference = budgetTotal - plannedTotal;
+
+  return {
+    budgetTotal,
+    paidTotal,
+    unpaidTotal,
+    plannedTotal,
+    remaining: difference,
+    difference,
+    isOverBudget: plannedTotal > budgetTotal
+  };
+}
+
+export function groupExpensesByCategory(expenses = []) {
+  return expenses.reduce((groups, expense) => {
+    const category = EXPENSE_CATEGORIES.includes(expense.category) ? expense.category : "other";
+    groups[category] = groups[category] || [];
+    groups[category].push(expense);
+    return groups;
+  }, {});
+}
+
+export function getExpenseCategoryLabel(category) {
+  const labels = {
+    flights: "Voli",
+    accommodation: "Alloggi",
+    transport: "Trasporti",
+    activities: "Attivita",
+    food: "Cibo",
+    extras: "Extra",
+    emergencies: "Emergenze",
+    other: "Altro"
+  };
+
+  return labels[category] || labels.other;
+}
+
+export function getExpenseStatusLabel(status) {
+  const labels = {
+    paid: "Pagato",
+    unpaid: "Da pagare"
+  };
+
+  return labels[status] || labels.unpaid;
 }
 
 export function calculateTripDuration(startDate, endDate) {
