@@ -1,0 +1,100 @@
+# Ithaca QA Checklist
+
+Checklist manuale per la prima release PWA di Ithaca.
+
+## Home
+
+- [ ] La Home si carica su `#/home` senza errori console.
+- [ ] Empty state visibile quando non ci sono viaggi.
+- [ ] Creazione viaggio funzionante con campi obbligatori.
+- [ ] Modifica viaggio funzionante.
+- [ ] Eliminazione viaggio con conferma.
+- [ ] Click su una card apre la dashboard del viaggio.
+- [ ] La modal Gestione dati si apre dalla Home.
+
+## Dashboard
+
+- [ ] Viaggio futuro: countdown e messaggi coerenti.
+- [ ] Viaggio che parte oggi: stato "Parte oggi".
+- [ ] Viaggio in corso: stato e prossime azioni coerenti.
+- [ ] Viaggio concluso: stato "Concluso".
+- [ ] Widget Budget aggiornato con dati reali.
+- [ ] Widget Timeline mostra la prossima attivita.
+- [ ] Widget Checklist mostra completati/totale.
+- [ ] Widget Note mostra ultima nota e destinazioni.
+- [ ] Prossime azioni coerenti con checklist o stato viaggio.
+- [ ] Quick actions portano alle sezioni corrette.
+
+## Budget
+
+- [ ] Aggiunta spesa funzionante.
+- [ ] Modifica spesa funzionante.
+- [ ] Eliminazione spesa con conferma.
+- [ ] Filtro stato: tutte/pagate/da pagare.
+- [ ] Filtro categoria funzionante.
+- [ ] Sforamento budget evidenziato.
+- [ ] Dati presenti dopo refresh.
+
+## Timeline
+
+- [ ] Aggiunta tappa funzionante.
+- [ ] Modifica tappa funzionante.
+- [ ] Eliminazione tappa con conferma.
+- [ ] Ordinamento per data e ora corretto.
+- [ ] Raggruppamento per giorno corretto.
+- [ ] Warning data fuori range visibile.
+- [ ] Filtro tipo funzionante.
+- [ ] Dati presenti dopo refresh.
+
+## Checklist
+
+- [ ] Aggiunta task funzionante.
+- [ ] Modifica task funzionante.
+- [ ] Eliminazione task con conferma.
+- [ ] Toggle completato/non completato funzionante.
+- [ ] Template base caricato correttamente.
+- [ ] Template non crea duplicati titolo+sezione.
+- [ ] Badge overdue visibile per task scaduti.
+- [ ] Filtri tutti/da fare/completati funzionanti.
+- [ ] Dati presenti dopo refresh.
+
+## Note
+
+- [ ] Aggiunta nota funzionante.
+- [ ] Modifica nota funzionante.
+- [ ] Eliminazione nota con conferma.
+- [ ] Ricerca su titolo, destinazione e contenuto.
+- [ ] Filtro destinazione funzionante.
+- [ ] Empty state senza note visibile.
+- [ ] Dati presenti dopo refresh.
+
+## Backup
+
+- [ ] Export JSON scarica `ithaca-backup-YYYY-MM-DD.json`.
+- [ ] Il backup contiene `app`, `version`, `exportedAt`, `data`.
+- [ ] Import JSON valido sostituisce i dati dopo conferma.
+- [ ] Import JSON non valido mostra errore senza crash.
+- [ ] Reset dati app chiede conferma forte.
+- [ ] Migrazione da `odysseus:data` a `ithaca:data` preserva i dati.
+- [ ] JSON corrotto non rompe l'app e crea backup di sicurezza.
+
+## PWA
+
+- [ ] Manifest valido e raggiungibile.
+- [ ] Service worker registrato.
+- [ ] Cache aggiornata a `ithaca-shell-v10`.
+- [ ] App caricabile offline dopo primo caricamento.
+- [ ] Icone manifest 192x192 e 512x512 presenti.
+- [ ] Favicon presente.
+- [ ] Installabilita disponibile su localhost o HTTPS.
+
+## Responsive e accessibilita
+
+- [ ] Mobile 375px senza overflow orizzontale.
+- [ ] Mobile 430px senza overflow orizzontale.
+- [ ] Tablet leggibile.
+- [ ] Desktop centrato e non troppo largo.
+- [ ] Bottom nav non copre contenuti principali.
+- [ ] Focus visibile su bottoni, link e input.
+- [ ] Label associate agli input principali.
+- [ ] Modal chiudibile da pulsante, backdrop ed Escape.

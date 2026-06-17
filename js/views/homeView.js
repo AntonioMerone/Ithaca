@@ -488,7 +488,7 @@ export function renderHomeView() {
     <section class="page" aria-labelledby="home-title">
       <header class="page__header home-hero">
         <div>
-          <p class="page__eyebrow">Travel dossier</p>
+          <p class="page__eyebrow">Dossier viaggio</p>
           <h1 class="page__title" id="home-title">Ithaca</h1>
           <p class="page__summary">Ithaca organizza budget, tappe, checklist e note del viaggio in un unico dossier.</p>
         </div>

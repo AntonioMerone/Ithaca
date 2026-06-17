@@ -1,9 +1,12 @@
-const CACHE_NAME = "ithaca-shell-v9";
+const CACHE_NAME = "ithaca-shell-v10";
 
 const APP_SHELL = [
   "/",
   "/index.html",
   "/manifest.json",
+  "/assets/icons/favicon.svg",
+  "/assets/icons/icon-192.svg",
+  "/assets/icons/icon-512.svg",
   "/css/reset.css",
   "/css/variables.css",
   "/css/base.css",
