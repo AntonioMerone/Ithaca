@@ -4,7 +4,8 @@ const STORAGE_PREFIX = "odysseus";
 const DATA_KEY = "data";
 const DEFAULT_DATA = {
   trips: [],
-  expenses: []
+  expenses: [],
+  timelineItems: []
 };
 
 function keyFor(key) {
@@ -16,7 +17,8 @@ function normalizeData(data) {
     ...DEFAULT_DATA,
     ...(data && typeof data === "object" ? data : {}),
     trips: Array.isArray(data?.trips) ? data.trips : [],
-    expenses: Array.isArray(data?.expenses) ? data.expenses : []
+    expenses: Array.isArray(data?.expenses) ? data.expenses : [],
+    timelineItems: Array.isArray(data?.timelineItems) ? data.timelineItems : []
   };
 }
 
@@ -111,6 +113,7 @@ export function deleteTrip(id) {
   const initialCount = data.trips.length;
   data.trips = data.trips.filter((trip) => trip.id !== id);
   data.expenses = data.expenses.filter((expense) => expense.tripId !== id);
+  data.timelineItems = data.timelineItems.filter((item) => item.tripId !== id);
   saveData(data);
   return data.trips.length !== initialCount;
 }
@@ -180,4 +183,73 @@ export function deleteExpense(id) {
   data.expenses = data.expenses.filter((expense) => expense.id !== id);
   saveData(data);
   return data.expenses.length !== initialCount;
+}
+
+export function getTimelineItems() {
+  return getData().timelineItems;
+}
+
+export function getTimelineItemsByTripId(tripId) {
+  return getTimelineItems().filter((item) => item.tripId === tripId);
+}
+
+export function getTimelineItemById(id) {
+  return getTimelineItems().find((item) => item.id === id) || null;
+}
+
+export function createTimelineItem(itemData) {
+  const data = getData();
+  const now = new Date().toISOString();
+  const item = {
+    id: generateId("timeline"),
+    tripId: "",
+    type: "other",
+    title: "",
+    date: "",
+    time: "",
+    location: "",
+    cost: 0,
+    paymentStatus: "none",
+    notes: "",
+    ...itemData,
+    createdAt: now,
+    updatedAt: now
+  };
+
+  data.timelineItems = [item, ...data.timelineItems];
+  saveData(data);
+  return item;
+}
+
+export function updateTimelineItem(id, updates) {
+  const data = getData();
+  let updatedItem = null;
+
+  data.timelineItems = data.timelineItems.map((item) => {
+    if (item.id !== id) {
+      return item;
+    }
+
+    updatedItem = {
+      ...item,
+      ...updates,
+      id: item.id,
+      tripId: item.tripId,
+      createdAt: item.createdAt,
+      updatedAt: new Date().toISOString()
+    };
+
+    return updatedItem;
+  });
+
+  saveData(data);
+  return updatedItem;
+}
+
+export function deleteTimelineItem(id) {
+  const data = getData();
+  const initialCount = data.timelineItems.length;
+  data.timelineItems = data.timelineItems.filter((item) => item.id !== id);
+  saveData(data);
+  return data.timelineItems.length !== initialCount;
 }

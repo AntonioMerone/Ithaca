@@ -1,4 +1,4 @@
-const CACHE_NAME = "ithaca-shell-v4";
+const CACHE_NAME = "ithaca-shell-v5";
 
 const APP_SHELL = [
   "/",

@@ -18,6 +18,18 @@ export const EXPENSE_CATEGORIES = [
 
 export const EXPENSE_STATUSES = ["paid", "unpaid"];
 
+export const TIMELINE_TYPES = [
+  "flight",
+  "hotel",
+  "transport",
+  "activity",
+  "food",
+  "note",
+  "other"
+];
+
+export const TIMELINE_PAYMENT_STATUSES = ["paid", "unpaid", "none"];
+
 function parseDate(value) {
   if (!value) {
     return null;
@@ -134,6 +146,109 @@ export function getExpenseStatusLabel(status) {
   };
 
   return labels[status] || labels.unpaid;
+}
+
+export function getTimelineTypeLabel(type) {
+  const labels = {
+    flight: "Volo",
+    hotel: "Hotel",
+    transport: "Trasporto",
+    activity: "Attivita",
+    food: "Cibo",
+    note: "Nota",
+    other: "Altro"
+  };
+
+  return labels[type] || labels.other;
+}
+
+export function getTimelineTypeIcon(type) {
+  const icons = {
+    flight: "FL",
+    hotel: "HT",
+    transport: "TR",
+    activity: "AC",
+    food: "FD",
+    note: "NT",
+    other: "OT"
+  };
+
+  return icons[type] || icons.other;
+}
+
+export function getTimelinePaymentStatusLabel(status) {
+  const labels = {
+    paid: "Pagato",
+    unpaid: "Da pagare",
+    none: "Nessun pagamento"
+  };
+
+  return labels[status] || labels.none;
+}
+
+export function sortTimelineItems(items = []) {
+  return [...items].sort((a, b) => {
+    const dateComparison = String(a.date || "").localeCompare(String(b.date || ""));
+
+    if (dateComparison !== 0) {
+      return dateComparison;
+    }
+
+    const aTime = String(a.time || "");
+    const bTime = String(b.time || "");
+
+    if (aTime && !bTime) {
+      return -1;
+    }
+
+    if (!aTime && bTime) {
+      return 1;
+    }
+
+    const timeComparison = aTime.localeCompare(bTime);
+
+    if (timeComparison !== 0) {
+      return timeComparison;
+    }
+
+    return String(a.createdAt || "").localeCompare(String(b.createdAt || ""));
+  });
+}
+
+export function groupTimelineItemsByDate(items = []) {
+  return sortTimelineItems(items).reduce((groups, item) => {
+    const date = item.date || "senza-data";
+    groups[date] = groups[date] || [];
+    groups[date].push(item);
+    return groups;
+  }, {});
+}
+
+function timelineComparableValue(item) {
+  if (!item?.date) {
+    return null;
+  }
+
+  return `${item.date}T${item.time || "23:59"}`;
+}
+
+export function getNextTimelineItem(items = [], todayDate = null) {
+  const now = todayDate ? new Date(todayDate) : new Date();
+  const today = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0")
+  ].join("-");
+  const currentTime = [
+    String(now.getHours()).padStart(2, "0"),
+    String(now.getMinutes()).padStart(2, "0")
+  ].join(":");
+  const currentComparable = `${today}T${currentTime}`;
+
+  return sortTimelineItems(items).find((item) => {
+    const comparable = timelineComparableValue(item);
+    return comparable ? comparable >= currentComparable : false;
+  }) || null;
 }
 
 export function calculateTripDuration(startDate, endDate) {

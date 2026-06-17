@@ -1,4 +1,4 @@
-import { getExpensesByTripId, getTripById } from "../storage.js";
+import { getExpensesByTripId, getTimelineItemsByTripId, getTripById } from "../storage.js";
 import {
   calculateBudgetSummary,
   calculateCountdown,
@@ -7,7 +7,9 @@ import {
   escapeHtml,
   formatCurrency,
   formatDate,
-  getDaysUntilTrip
+  getDaysUntilTrip,
+  getNextTimelineItem,
+  sortTimelineItems
 } from "../utils.js";
 
 function formatDestinations(destinations) {
@@ -144,6 +146,36 @@ function renderSectionWidget({ title, body, href, cta }) {
   `;
 }
 
+function renderTimelineWidget(items, basePath) {
+  const sortedItems = sortTimelineItems(items);
+  const nextItem = getNextTimelineItem(sortedItems);
+  const countText = sortedItems.length === 1 ? "1 tappa inserita" : `${sortedItems.length} tappe inserite`;
+
+  if (sortedItems.length === 0) {
+    return renderSectionWidget({
+      title: "Timeline",
+      body: "Nessuna tappa inserita",
+      href: `${basePath}/timeline`,
+      cta: "Vai alla timeline"
+    });
+  }
+
+  return `
+    <article class="dashboard-widget">
+      <h2 class="dashboard-widget__title">Timeline</h2>
+      <p class="dashboard-widget__body">${countText}</p>
+      ${nextItem ? `
+        <div class="next-activity">
+          <span>Prossima</span>
+          <strong>${escapeHtml(nextItem.title)}</strong>
+          <p>${formatDate(nextItem.date)}${nextItem.time ? `, ${escapeHtml(nextItem.time)}` : ""}${nextItem.location ? ` · ${escapeHtml(nextItem.location)}` : ""}</p>
+        </div>
+      ` : `<p class="dashboard-widget__body">Nessuna attivita futura</p>`}
+      <a class="button button--ghost button--small" href="${basePath}/timeline">Vai alla timeline</a>
+    </article>
+  `;
+}
+
 export function renderTripDashboardView({ params }) {
   const trip = getTripById(params.tripId);
 
@@ -160,6 +192,7 @@ export function renderTripDashboardView({ params }) {
   const statusLabel = getStatusLabel(status);
   const expenses = getExpensesByTripId(trip.id);
   const budget = calculateBudgetSummary(trip, expenses);
+  const timelineItems = getTimelineItemsByTripId(trip.id);
 
   return `
     <section class="page dashboard-page" aria-labelledby="trip-title">
@@ -204,12 +237,7 @@ export function renderTripDashboardView({ params }) {
           <a class="button button--ghost button--small" href="${basePath}/budget">Apri budget</a>
         </article>
 
-        ${renderSectionWidget({
-          title: "Timeline",
-          body: "Nessuna tappa inserita",
-          href: `${basePath}/timeline`,
-          cta: "Vai alla timeline"
-        })}
+        ${renderTimelineWidget(timelineItems, basePath)}
 
         ${renderSectionWidget({
           title: "Checklist",
