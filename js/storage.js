@@ -1,6 +1,8 @@
 import { generateId } from "./utils.js";
 
-const STORAGE_PREFIX = "odysseus";
+export const STORAGE_KEY = "ithaca:data";
+export const LEGACY_STORAGE_KEYS = ["odysseus:data"];
+const CORRUPTED_BACKUP_KEY = "ithaca:data:corrupted-backup";
 const DATA_KEY = "data";
 const DEFAULT_DATA = {
   trips: [],
@@ -11,12 +13,22 @@ const DEFAULT_DATA = {
 };
 
 function keyFor(key) {
-  return `${STORAGE_PREFIX}:${key}`;
+  return key === DATA_KEY ? STORAGE_KEY : `ithaca:${key}`;
+}
+
+function getDefaultData() {
+  return {
+    trips: [],
+    expenses: [],
+    timelineItems: [],
+    checklistItems: [],
+    notes: []
+  };
 }
 
 function normalizeData(data) {
   return {
-    ...DEFAULT_DATA,
+    ...getDefaultData(),
     ...(data && typeof data === "object" ? data : {}),
     trips: Array.isArray(data?.trips) ? data.trips : [],
     expenses: Array.isArray(data?.expenses) ? data.expenses : [],
@@ -26,11 +38,42 @@ function normalizeData(data) {
   };
 }
 
+function preserveCorruptedData(rawValue) {
+  if (!rawValue || localStorage.getItem(CORRUPTED_BACKUP_KEY)) {
+    return;
+  }
+
+  localStorage.setItem(CORRUPTED_BACKUP_KEY, JSON.stringify({
+    capturedAt: new Date().toISOString(),
+    key: STORAGE_KEY,
+    rawValue
+  }));
+}
+
+export function migrateStorageKey() {
+  if (localStorage.getItem(STORAGE_KEY) !== null) {
+    return false;
+  }
+
+  const legacyKey = LEGACY_STORAGE_KEYS.find((key) => localStorage.getItem(key) !== null);
+
+  if (!legacyKey) {
+    return false;
+  }
+
+  localStorage.setItem(STORAGE_KEY, localStorage.getItem(legacyKey));
+  return true;
+}
+
 export function readStorage(key, fallbackValue = null) {
+  migrateStorageKey();
+
   try {
     const rawValue = localStorage.getItem(keyFor(key));
     return rawValue ? JSON.parse(rawValue) : fallbackValue;
-  } catch {
+  } catch (error) {
+    console.warn("Ithaca: dati locali non validi, ripristino struttura vuota.", error);
+    preserveCorruptedData(localStorage.getItem(keyFor(key)));
     return fallbackValue;
   }
 }
@@ -46,16 +89,127 @@ export function removeStorage(key) {
 
 export function clearIthacaStorage() {
   Object.keys(localStorage)
-    .filter((key) => key.startsWith(`${STORAGE_PREFIX}:`))
+    .filter((key) => key.startsWith("ithaca:"))
     .forEach((key) => localStorage.removeItem(key));
 }
 
 export function getData() {
-  return normalizeData(readStorage(DATA_KEY, DEFAULT_DATA));
+  migrateStorageKey();
+
+  const rawValue = localStorage.getItem(STORAGE_KEY);
+
+  if (rawValue === null) {
+    const emptyData = getDefaultData();
+    saveData(emptyData);
+    return emptyData;
+  }
+
+  try {
+    return normalizeData(JSON.parse(rawValue));
+  } catch (error) {
+    console.warn("Ithaca: dati locali corrotti, backup di sicurezza creato.", error);
+    preserveCorruptedData(rawValue);
+    const emptyData = getDefaultData();
+    saveData(emptyData);
+    return emptyData;
+  }
 }
 
 export function saveData(data) {
   return writeStorage(DATA_KEY, normalizeData(data));
+}
+
+export function initializeStorage() {
+  migrateStorageKey();
+  const data = getData();
+  saveData(data);
+  cleanupOrphanData();
+  return getData();
+}
+
+export function cleanupOrphanData() {
+  const data = getData();
+  const validTripIds = new Set(data.trips.map((trip) => trip.id));
+  const before = {
+    expenses: data.expenses.length,
+    timelineItems: data.timelineItems.length,
+    checklistItems: data.checklistItems.length,
+    notes: data.notes.length
+  };
+
+  data.expenses = data.expenses.filter((expense) => validTripIds.has(expense.tripId));
+  data.timelineItems = data.timelineItems.filter((item) => validTripIds.has(item.tripId));
+  data.checklistItems = data.checklistItems.filter((item) => validTripIds.has(item.tripId));
+  data.notes = data.notes.filter((note) => validTripIds.has(note.tripId));
+
+  const removed = {
+    expenses: before.expenses - data.expenses.length,
+    timelineItems: before.timelineItems - data.timelineItems.length,
+    checklistItems: before.checklistItems - data.checklistItems.length,
+    notes: before.notes - data.notes.length
+  };
+  const changed = Object.values(removed).some((count) => count > 0);
+
+  if (changed) {
+    saveData(data);
+  }
+
+  return {
+    changed,
+    removed,
+    data: normalizeData(data)
+  };
+}
+
+export function createBackupPayload() {
+  cleanupOrphanData();
+
+  return {
+    app: "Ithaca",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    data: getData()
+  };
+}
+
+export function getBackupFileName(date = new Date()) {
+  const day = [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0")
+  ].join("-");
+
+  return `ithaca-backup-${day}.json`;
+}
+
+export function importBackupPayload(payload) {
+  let backup = payload;
+
+  if (typeof payload === "string") {
+    try {
+      backup = JSON.parse(payload);
+    } catch {
+      throw new Error("Il file selezionato non contiene JSON valido.");
+    }
+  }
+
+  if (!backup || typeof backup !== "object" || !backup.data || typeof backup.data !== "object") {
+    throw new Error("Backup non valido: manca la sezione data.");
+  }
+
+  if (!Array.isArray(backup.data.trips)) {
+    throw new Error("Backup non valido: data.trips deve essere un array.");
+  }
+
+  saveData(normalizeData(backup.data));
+  cleanupOrphanData();
+  return getData();
+}
+
+export function resetAppData() {
+  localStorage.removeItem(STORAGE_KEY);
+  saveData(getDefaultData());
+  return getData();
 }
 
 export function getTrips() {
@@ -121,6 +275,7 @@ export function deleteTrip(id) {
   data.checklistItems = data.checklistItems.filter((item) => item.tripId !== id);
   data.notes = data.notes.filter((note) => note.tripId !== id);
   saveData(data);
+  cleanupOrphanData();
   return data.trips.length !== initialCount;
 }
 

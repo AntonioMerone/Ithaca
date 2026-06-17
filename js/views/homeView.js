@@ -1,6 +1,16 @@
 import { closeModal, openModal } from "../components/modal.js";
 import { showToast } from "../components/toast.js";
-import { createTrip, deleteTrip, getTripById, getTrips, updateTrip } from "../storage.js";
+import {
+  createBackupPayload,
+  createTrip,
+  deleteTrip,
+  getBackupFileName,
+  getTripById,
+  getTrips,
+  importBackupPayload,
+  resetAppData,
+  updateTrip
+} from "../storage.js";
 import {
   calculateCountdown,
   calculateTripDuration,
@@ -11,6 +21,7 @@ import {
 
 const DEFAULT_CURRENCY = "EUR";
 let homeHandlersReady = false;
+let pendingImportText = "";
 
 function parseDestinations(value) {
   return String(value || "")
@@ -191,6 +202,99 @@ function openDeleteConfirmation(trip) {
   });
 }
 
+function downloadBackupJson() {
+  try {
+    const payload = createBackupPayload();
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json"
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = getBackupFileName();
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    showToast("Backup JSON esportato.");
+  } catch {
+    showToast("Export non riuscito. Riprova.");
+  }
+}
+
+function renderDataManagementContent(error = "") {
+  return `
+    <div class="data-management">
+      ${error ? `<div class="form-errors" role="alert"><p>${escapeHtml(error)}</p></div>` : ""}
+      <p class="panel__body">Esporta, importa o resetta i dati locali salvati in Ithaca.</p>
+
+      <div class="data-management__actions">
+        <button class="button button--primary" type="button" data-action="export-backup">Esporta backup JSON</button>
+        <button class="button button--ghost" type="button" data-action="choose-import-file">Importa backup JSON</button>
+        <button class="button button--danger-ghost" type="button" data-action="open-reset-confirmation">Reset dati app</button>
+      </div>
+
+      <input class="visually-hidden" id="backup-file-input" type="file" accept="application/json,.json" data-action="import-backup-file">
+    </div>
+  `;
+}
+
+function openDataManagementModal(error = "") {
+  openModal({
+    title: "Gestione dati",
+    content: renderDataManagementContent(error)
+  });
+}
+
+function openImportConfirmation() {
+  openModal({
+    title: "Importa backup JSON",
+    content: `
+      <div class="confirm-dialog">
+        <p>L'import sostituira i dati attuali di Ithaca. Vuoi continuare?</p>
+        <div class="form-actions">
+          <button class="button button--ghost" type="button" data-action="open-data-management">Annulla</button>
+          <button class="button button--primary" type="button" data-action="confirm-import-backup">Importa</button>
+        </div>
+      </div>
+    `
+  });
+}
+
+function openResetConfirmation() {
+  openModal({
+    title: "Reset dati app",
+    content: `
+      <div class="confirm-dialog">
+        <p>Questa azione cancellera tutti i viaggi e i dati salvati in Ithaca. Continuare?</p>
+        <div class="form-actions">
+          <button class="button button--ghost" type="button" data-action="open-data-management">Annulla</button>
+          <button class="button button--danger" type="button" data-action="confirm-reset-data">Reset dati app</button>
+        </div>
+      </div>
+    `
+  });
+}
+
+function readImportFile(file) {
+  if (!file) {
+    return;
+  }
+
+  const reader = new FileReader();
+
+  reader.addEventListener("load", () => {
+    pendingImportText = String(reader.result || "");
+    openImportConfirmation();
+  });
+
+  reader.addEventListener("error", () => {
+    openDataManagementModal("Non e stato possibile leggere il file selezionato.");
+  });
+
+  reader.readAsText(file);
+}
+
 function refreshView() {
   window.dispatchEvent(new CustomEvent("ithaca:refresh"));
 }
@@ -262,9 +366,59 @@ function handleHomeClick(event) {
     showToast("Viaggio eliminato.");
   }
 
+  if (action === "open-data-management") {
+    pendingImportText = "";
+    openDataManagementModal();
+  }
+
+  if (action === "export-backup") {
+    downloadBackupJson();
+  }
+
+  if (action === "choose-import-file") {
+    document.querySelector("#backup-file-input")?.click();
+  }
+
+  if (action === "confirm-import-backup") {
+    try {
+      importBackupPayload(pendingImportText);
+      pendingImportText = "";
+      closeModal();
+      window.location.hash = "#/home";
+      refreshView();
+      showToast("Backup importato.");
+    } catch (error) {
+      pendingImportText = "";
+      openDataManagementModal(error.message || "Backup non valido.");
+    }
+  }
+
+  if (action === "open-reset-confirmation") {
+    openResetConfirmation();
+  }
+
+  if (action === "confirm-reset-data") {
+    resetAppData();
+    closeModal();
+    window.location.hash = "#/home";
+    refreshView();
+    showToast("Dati app resettati.");
+  }
+
   if (action === "close-modal") {
     closeModal();
   }
+}
+
+function handleHomeChange(event) {
+  const actionTarget = event.target.closest("[data-action]");
+
+  if (!actionTarget || actionTarget.dataset.action !== "import-backup-file") {
+    return;
+  }
+
+  readImportFile(actionTarget.files?.[0]);
+  actionTarget.value = "";
 }
 
 function ensureHomeHandlers() {
@@ -273,6 +427,7 @@ function ensureHomeHandlers() {
   }
 
   document.addEventListener("click", handleHomeClick);
+  document.addEventListener("change", handleHomeChange);
   document.addEventListener("submit", handleTripFormSubmit);
   homeHandlersReady = true;
 }
@@ -334,7 +489,10 @@ export function renderHomeView() {
           <h1 class="page__title" id="home-title">Ithaca</h1>
           <p class="page__summary">Il dossier digitale del tuo viaggio</p>
         </div>
-        <button class="button button--primary" type="button" data-action="open-trip-form">Nuovo viaggio</button>
+        <div class="home-actions">
+          <button class="button button--ghost" type="button" data-action="open-data-management">Gestione dati</button>
+          <button class="button button--primary" type="button" data-action="open-trip-form">Nuovo viaggio</button>
+        </div>
       </header>
 
       ${renderTripList(trips)}
