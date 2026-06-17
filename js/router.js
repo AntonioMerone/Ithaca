@@ -1,0 +1,111 @@
+import { renderHomeView } from "./views/homeView.js";
+import { renderTripDashboardView } from "./views/tripDashboardView.js";
+import { renderTimelineView } from "./views/timelineView.js";
+import { renderBudgetView } from "./views/budgetView.js";
+import { renderChecklistView } from "./views/checklistView.js";
+import { renderNotesView } from "./views/notesView.js";
+import { renderBottomNav } from "./components/bottomNav.js";
+
+const ROUTES = [
+  {
+    name: "Home",
+    pattern: /^#\/home\/?$/,
+    render: renderHomeView,
+    tripPage: false
+  },
+  {
+    name: "Viaggio",
+    pattern: /^#\/trip\/([^/]+)\/?$/,
+    render: renderTripDashboardView,
+    tripPage: true
+  },
+  {
+    name: "Timeline",
+    pattern: /^#\/trip\/([^/]+)\/timeline\/?$/,
+    render: renderTimelineView,
+    tripPage: true
+  },
+  {
+    name: "Budget",
+    pattern: /^#\/trip\/([^/]+)\/budget\/?$/,
+    render: renderBudgetView,
+    tripPage: true
+  },
+  {
+    name: "Checklist",
+    pattern: /^#\/trip\/([^/]+)\/checklist\/?$/,
+    render: renderChecklistView,
+    tripPage: true
+  },
+  {
+    name: "Note",
+    pattern: /^#\/trip\/([^/]+)\/notes\/?$/,
+    render: renderNotesView,
+    tripPage: true
+  }
+];
+
+function getCurrentHash() {
+  return window.location.hash || "#/home";
+}
+
+function matchRoute(hash) {
+  for (const route of ROUTES) {
+    const match = hash.match(route.pattern);
+
+    if (match) {
+      return {
+        ...route,
+        params: {
+          tripId: match[1] ? decodeURIComponent(match[1]) : null
+        }
+      };
+    }
+  }
+
+  return null;
+}
+
+function renderNotFound(hash) {
+  return `
+    <section class="page" aria-labelledby="not-found-title">
+      <header class="page__header">
+        <p class="page__eyebrow">Rotta non trovata</p>
+        <h1 class="page__title" id="not-found-title">Qui non c'e ancora una mappa.</h1>
+        <p class="page__summary">La rotta <strong>${hash}</strong> non esiste nella shell iniziale.</p>
+      </header>
+      <a class="action-link" href="#/home">Torna alla home</a>
+    </section>
+  `;
+}
+
+export function initRouter({ app, routeStatus }) {
+  function render() {
+    const hash = getCurrentHash();
+    const route = matchRoute(hash);
+
+    if (!route) {
+      app.classList.remove("has-bottom-nav");
+      app.innerHTML = renderNotFound(hash);
+      routeStatus.textContent = "Non trovata";
+      app.focus({ preventScroll: true });
+      return;
+    }
+
+    const viewHtml = route.render({ params: route.params, hash });
+    const navHtml = route.tripPage ? renderBottomNav(route.params.tripId, hash) : "";
+
+    app.classList.toggle("has-bottom-nav", route.tripPage);
+    app.innerHTML = viewHtml + navHtml;
+    routeStatus.textContent = route.name;
+    app.focus({ preventScroll: true });
+  }
+
+  window.addEventListener("hashchange", render);
+
+  if (!window.location.hash) {
+    window.location.hash = "#/home";
+  }
+
+  render();
+}

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#12343b">
+    <meta name="description" content="Odysseus Travel OS, shell PWA per organizzare viaggi.">
+    <title>Odysseus Travel OS</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="stylesheet" href="/css/reset.css">
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/layout.css">
+    <link rel="stylesheet" href="/css/components.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header">
+        <a class="app-brand" href="#/home" aria-label="Vai alla home">
+          <span class="app-brand__mark" aria-hidden="true">O</span>
+          <span>
+            <span class="app-brand__name">Odysseus</span>
+            <span class="app-brand__tagline">Travel OS</span>
+          </span>
+        </a>
+        <div class="app-header__status" id="route-status" aria-live="polite">Home</div>
+      </header>
+
+      <main class="app-main" id="app" tabindex="-1"></main>
+    </div>
+
+    <div id="toast-root" class="toast-root" aria-live="polite" aria-atomic="true"></div>
+    <div id="modal-root"></div>
+
+    <noscript>
+      <p class="noscript-message">Odysseus Travel OS richiede JavaScript per funzionare.</p>
+    </noscript>
+
+    <script type="module" src="/js/app.js"></script>
+  </body>
+</html>

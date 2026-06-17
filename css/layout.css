@@ -1,0 +1,122 @@
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+}
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  min-height: var(--header-height);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  background: rgb(255 255 255 / 88%);
+  backdrop-filter: blur(16px);
+}
+
+.app-brand {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.app-brand__mark {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 800;
+}
+
+.app-brand__name,
+.app-brand__tagline {
+  display: block;
+}
+
+.app-brand__name {
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.app-brand__tagline,
+.app-header__status {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.app-header__status {
+  max-width: 42%;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-main {
+  width: 100%;
+  max-width: var(--content-max-width);
+  flex: 1;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-4) var(--space-8);
+}
+
+.app-main.has-bottom-nav {
+  padding-bottom: calc(var(--bottom-nav-height) + var(--space-6));
+}
+
+.page {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.page__header {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.page__eyebrow {
+  color: var(--color-accent);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.page__title {
+  font-size: clamp(1.8rem, 8vw, 3rem);
+  line-height: 1.05;
+}
+
+.page__summary {
+  max-width: 36rem;
+  color: var(--color-text-muted);
+}
+
+.page-grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+@media (min-width: 720px) {
+  .app-header {
+    padding-inline: var(--space-6);
+  }
+
+  .app-main {
+    padding-inline: var(--space-6);
+  }
+
+  .page-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

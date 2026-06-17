@@ -1,0 +1,55 @@
+const CACHE_NAME = "odysseus-shell-v1";
+
+const APP_SHELL = [
+  "/",
+  "/index.html",
+  "/manifest.json",
+  "/css/reset.css",
+  "/css/variables.css",
+  "/css/base.css",
+  "/css/components.css",
+  "/css/layout.css",
+  "/js/app.js",
+  "/js/router.js",
+  "/js/storage.js",
+  "/js/utils.js",
+  "/js/views/homeView.js",
+  "/js/views/tripDashboardView.js",
+  "/js/views/timelineView.js",
+  "/js/views/budgetView.js",
+  "/js/views/checklistView.js",
+  "/js/views/notesView.js",
+  "/js/components/modal.js",
+  "/js/components/toast.js",
+  "/js/components/bottomNav.js"
+];
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
+  );
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))
+      )
+  );
+  self.clients.claim();
+});
+
+self.addEventListener("fetch", (event) => {
+  if (event.request.method !== "GET") {
+    return;
+  }
+
+  event.respondWith(
+    caches.match(event.request).then((cachedResponse) => {
+      return cachedResponse || fetch(event.request);
+    })
+  );
+});
