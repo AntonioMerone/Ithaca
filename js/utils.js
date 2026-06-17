@@ -269,6 +269,65 @@ export function isChecklistItemOverdue(item) {
   return dueDate < startOfToday();
 }
 
+export function sortNotes(notes = []) {
+  return [...notes].sort((a, b) => {
+    const updatedComparison = String(b.updatedAt || "").localeCompare(String(a.updatedAt || ""));
+
+    if (updatedComparison !== 0) {
+      return updatedComparison;
+    }
+
+    return String(b.createdAt || "").localeCompare(String(a.createdAt || ""));
+  });
+}
+
+export function searchNotes(notes = [], query = "") {
+  const cleanQuery = String(query || "").trim().toLowerCase();
+
+  if (!cleanQuery) {
+    return notes;
+  }
+
+  return notes.filter((note) => {
+    const searchableText = [
+      note.title,
+      note.destination,
+      note.content
+    ].join(" ").toLowerCase();
+
+    return searchableText.includes(cleanQuery);
+  });
+}
+
+export function getNoteDestinations(notes = []) {
+  return [...new Set(
+    notes
+      .map((note) => String(note.destination || "").trim())
+      .filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b));
+}
+
+export function filterNotesByDestination(notes = [], destination = "all") {
+  const cleanDestination = String(destination || "all").trim();
+
+  if (cleanDestination === "all") {
+    return notes;
+  }
+
+  return notes.filter((note) => String(note.destination || "").trim() === cleanDestination);
+}
+
+export function getNotePreview(content = "", maxLength = 120) {
+  const cleanContent = String(content || "").replace(/\s+/g, " ").trim();
+  const limit = Number(maxLength || 0);
+
+  if (!limit || cleanContent.length <= limit) {
+    return cleanContent;
+  }
+
+  return `${cleanContent.slice(0, Math.max(0, limit - 3)).trimEnd()}...`;
+}
+
 export function sortTimelineItems(items = []) {
   return [...items].sort((a, b) => {
     const dateComparison = String(a.date || "").localeCompare(String(b.date || ""));

@@ -1,4 +1,4 @@
-import { getChecklistItemsByTripId, getExpensesByTripId, getTimelineItemsByTripId, getTripById } from "../storage.js";
+import { getChecklistItemsByTripId, getExpensesByTripId, getNotesByTripId, getTimelineItemsByTripId, getTripById } from "../storage.js";
 import {
   calculateBudgetSummary,
   calculateChecklistSummary,
@@ -9,9 +9,12 @@ import {
   formatCurrency,
   formatDate,
   getOpenChecklistItems,
+  getNoteDestinations,
+  getNotePreview,
   getDaysUntilTrip,
   getNextTimelineItem,
   isChecklistItemOverdue,
+  sortNotes,
   sortTimelineItems
 } from "../utils.js";
 
@@ -211,6 +214,34 @@ function renderChecklistWidget(items, basePath) {
   `;
 }
 
+function renderNotesWidget(notes, basePath) {
+  const sortedNotes = sortNotes(notes);
+  const latestNote = sortedNotes[0] || null;
+  const destinations = getNoteDestinations(notes);
+
+  if (sortedNotes.length === 0) {
+    return renderSectionWidget({
+      title: "Note",
+      body: "Nessuna nota inserita",
+      href: `${basePath}/notes`,
+      cta: "Vai alle note"
+    });
+  }
+
+  return `
+    <article class="dashboard-widget">
+      <h2 class="dashboard-widget__title">Note</h2>
+      <p class="dashboard-widget__body">${sortedNotes.length} ${sortedNotes.length === 1 ? "nota salvata" : "note salvate"}</p>
+      <div class="next-activity">
+        <span>${destinations.length} ${destinations.length === 1 ? "destinazione" : "destinazioni"}</span>
+        <strong>Ultima: ${escapeHtml(latestNote.title)}</strong>
+        <p>${escapeHtml(getNotePreview(latestNote.content, 90))}</p>
+      </div>
+      <a class="button button--ghost button--small" href="${basePath}/notes">Vai alle note</a>
+    </article>
+  `;
+}
+
 export function renderTripDashboardView({ params }) {
   const trip = getTripById(params.tripId);
 
@@ -229,6 +260,7 @@ export function renderTripDashboardView({ params }) {
   const budget = calculateBudgetSummary(trip, expenses);
   const timelineItems = getTimelineItemsByTripId(trip.id);
   const checklistItems = getChecklistItemsByTripId(trip.id);
+  const notes = getNotesByTripId(trip.id);
   const openChecklistActions = getOpenChecklistItems(checklistItems, 3);
   const nextActions = openChecklistActions.length > 0
     ? openChecklistActions.map((item) => item.title)
@@ -281,12 +313,7 @@ export function renderTripDashboardView({ params }) {
 
         ${renderChecklistWidget(checklistItems, basePath)}
 
-        ${renderSectionWidget({
-          title: "Note",
-          body: "Nessuna nota inserita",
-          href: `${basePath}/notes`,
-          cta: "Vai alle note"
-        })}
+        ${renderNotesWidget(notes, basePath)}
       </section>
 
       <section class="panel panel--wide action-section" aria-labelledby="next-actions-title">

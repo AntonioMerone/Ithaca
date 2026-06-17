@@ -6,7 +6,8 @@ const DEFAULT_DATA = {
   trips: [],
   expenses: [],
   timelineItems: [],
-  checklistItems: []
+  checklistItems: [],
+  notes: []
 };
 
 function keyFor(key) {
@@ -20,7 +21,8 @@ function normalizeData(data) {
     trips: Array.isArray(data?.trips) ? data.trips : [],
     expenses: Array.isArray(data?.expenses) ? data.expenses : [],
     timelineItems: Array.isArray(data?.timelineItems) ? data.timelineItems : [],
-    checklistItems: Array.isArray(data?.checklistItems) ? data.checklistItems : []
+    checklistItems: Array.isArray(data?.checklistItems) ? data.checklistItems : [],
+    notes: Array.isArray(data?.notes) ? data.notes : []
   };
 }
 
@@ -117,6 +119,7 @@ export function deleteTrip(id) {
   data.expenses = data.expenses.filter((expense) => expense.tripId !== id);
   data.timelineItems = data.timelineItems.filter((item) => item.tripId !== id);
   data.checklistItems = data.checklistItems.filter((item) => item.tripId !== id);
+  data.notes = data.notes.filter((note) => note.tripId !== id);
   saveData(data);
   return data.trips.length !== initialCount;
 }
@@ -333,4 +336,68 @@ export function toggleChecklistItem(id) {
   return updateChecklistItem(id, {
     completed: !item.completed
   });
+}
+
+export function getNotes() {
+  return getData().notes;
+}
+
+export function getNotesByTripId(tripId) {
+  return getNotes().filter((note) => note.tripId === tripId);
+}
+
+export function getNoteById(id) {
+  return getNotes().find((note) => note.id === id) || null;
+}
+
+export function createNote(noteData) {
+  const data = getData();
+  const now = new Date().toISOString();
+  const note = {
+    id: generateId("note"),
+    tripId: "",
+    title: "",
+    destination: "",
+    content: "",
+    ...noteData,
+    createdAt: now,
+    updatedAt: now
+  };
+
+  data.notes = [note, ...data.notes];
+  saveData(data);
+  return note;
+}
+
+export function updateNote(id, updates) {
+  const data = getData();
+  let updatedNote = null;
+
+  data.notes = data.notes.map((note) => {
+    if (note.id !== id) {
+      return note;
+    }
+
+    updatedNote = {
+      ...note,
+      ...updates,
+      id: note.id,
+      tripId: note.tripId,
+      createdAt: note.createdAt,
+      updatedAt: new Date().toISOString()
+    };
+
+    return updatedNote;
+  });
+
+  saveData(data);
+  return updatedNote;
+}
+
+export function deleteNote(id) {
+  const data = getData();
+  const initialCount = data.notes.length;
+  data.notes = data.notes.filter((note) => note.id !== id);
+  saveData(data);
+  return data.notes.length !== initialCount;
 }
