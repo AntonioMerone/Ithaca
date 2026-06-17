@@ -5,6 +5,7 @@ import { renderBudgetView } from "./views/budgetView.js";
 import { renderChecklistView } from "./views/checklistView.js";
 import { renderNotesView } from "./views/notesView.js";
 import { renderBottomNav } from "./components/bottomNav.js";
+import { getTripById } from "./storage.js";
 
 const ROUTES = [
   {
@@ -93,15 +94,17 @@ export function initRouter({ app, routeStatus }) {
     }
 
     const viewHtml = route.render({ params: route.params, hash });
-    const navHtml = route.tripPage ? renderBottomNav(route.params.tripId, hash) : "";
+    const showTripNav = route.tripPage && getTripById(route.params.tripId);
+    const navHtml = showTripNav ? renderBottomNav(route.params.tripId, hash) : "";
 
-    app.classList.toggle("has-bottom-nav", route.tripPage);
+    app.classList.toggle("has-bottom-nav", Boolean(showTripNav));
     app.innerHTML = viewHtml + navHtml;
     routeStatus.textContent = route.name;
     app.focus({ preventScroll: true });
   }
 
   window.addEventListener("hashchange", render);
+  window.addEventListener("ithaca:refresh", render);
 
   if (!window.location.hash) {
     window.location.hash = "#/home";

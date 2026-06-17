@@ -107,6 +107,10 @@
   gap: var(--space-4);
 }
 
+.home-hero {
+  align-items: start;
+}
+
 @media (min-width: 720px) {
   .app-header {
     padding-inline: var(--space-6);
@@ -118,5 +122,9 @@
 
   .page-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-hero {
+    grid-template-columns: 1fr auto;
   }
 }

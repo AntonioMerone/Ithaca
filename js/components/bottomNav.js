@@ -1,9 +1,9 @@
 const ITEMS = [
-  { label: "Home", icon: "⌂", path: "" },
-  { label: "Timeline", icon: "◇", path: "/timeline" },
-  { label: "Budget", icon: "€", path: "/budget" },
-  { label: "Checklist", icon: "✓", path: "/checklist" },
-  { label: "Note", icon: "✎", path: "/notes" }
+  { label: "Dashboard", icon: "D", path: "" },
+  { label: "Timeline", icon: "T", path: "/timeline" },
+  { label: "Budget", icon: "B", path: "/budget" },
+  { label: "Checklist", icon: "C", path: "/checklist" },
+  { label: "Note", icon: "N", path: "/notes" }
 ];
 
 export function renderBottomNav(tripId, currentHash) {
