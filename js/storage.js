@@ -4,13 +4,6 @@ export const STORAGE_KEY = "ithaca:data";
 export const LEGACY_STORAGE_KEYS = ["odysseus:data"];
 const CORRUPTED_BACKUP_KEY = "ithaca:data:corrupted-backup";
 const DATA_KEY = "data";
-const DEFAULT_DATA = {
-  trips: [],
-  expenses: [],
-  timelineItems: [],
-  checklistItems: [],
-  notes: []
-};
 
 function keyFor(key) {
   return key === DATA_KEY ? STORAGE_KEY : `ithaca:${key}`;
