@@ -97,7 +97,7 @@ function renderEmptyState() {
   return `
     <article class="empty-state">
       <h2>Nessuna tappa ancora</h2>
-      <p>Aggiungi voli, hotel, trasporti e attivita per costruire il dossier del viaggio giorno per giorno.</p>
+      <p>Costruisci la timeline del viaggio giorno per giorno, dalle partenze alle attivita.</p>
       <button class="button button--primary" type="button" data-action="open-timeline-form">Aggiungi prima tappa</button>
     </article>
   `;

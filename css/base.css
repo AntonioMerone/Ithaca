@@ -11,6 +11,14 @@ body {
   line-height: 1.5;
 }
 
+body,
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
 :focus-visible {
   outline: 3px solid rgb(215 122 97 / 45%);
   outline-offset: 3px;
@@ -19,6 +27,13 @@ body {
 button {
   border: 0;
   background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .noscript-message {

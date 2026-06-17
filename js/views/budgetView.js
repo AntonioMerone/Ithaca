@@ -142,7 +142,7 @@ function renderEmptyState() {
   return `
     <article class="empty-state">
       <h2>Nessuna spesa ancora</h2>
-      <p>Aggiungi voli, hotel, trasporti e attivita per tenere il budget sotto controllo.</p>
+      <p>Aggiungi voli, hotel e attivita per iniziare a controllare il budget del viaggio.</p>
       <button class="button button--primary" type="button" data-action="open-expense-form">Aggiungi prima spesa</button>
     </article>
   `;

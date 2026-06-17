@@ -38,6 +38,12 @@
   border-radius: var(--radius-sm);
   font-weight: 800;
   line-height: 1;
+  text-align: center;
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.button:hover {
+  transform: translateY(-1px);
 }
 
 .button--primary {
@@ -56,13 +62,13 @@
 }
 
 .button--danger {
-  background: #a7382f;
+  background: var(--color-danger);
   color: #fff;
 }
 
 .button--danger-ghost {
   border-color: rgb(167 56 47 / 22%);
-  background: #fff6f4;
+  background: var(--color-danger-soft);
   color: #8c2f28;
 }
 
@@ -126,6 +132,10 @@
   text-align: center;
 }
 
+.empty-state .button {
+  justify-self: center;
+}
+
 .empty-state h2 {
   font-size: 1.35rem;
 }
@@ -148,10 +158,13 @@
   border-radius: var(--radius-md);
   background: var(--color-surface);
   box-shadow: 0 0.75rem 2rem var(--color-shadow);
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
 
 .trip-card:hover {
   border-color: rgb(18 52 59 / 32%);
+  box-shadow: 0 1rem 2.5rem var(--color-shadow-strong);
+  transform: translateY(-1px);
 }
 
 .trip-card__main {
@@ -166,10 +179,27 @@
 }
 
 .trip-card__destinations,
-.trip-card__dates,
-.trip-card__meta,
+.trip-card__details,
 .trip-card__notes {
   color: var(--color-text-muted);
+}
+
+.trip-card__details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: 0.92rem;
+}
+
+.trip-card__details span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+  color: var(--color-primary);
+  font-weight: 800;
 }
 
 .trip-card__budget {
@@ -199,6 +229,10 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+.home-actions {
+  align-items: center;
 }
 
 .data-management {
@@ -266,7 +300,7 @@
   border-radius: var(--radius-md);
   background: linear-gradient(135deg, var(--color-primary), #265d58);
   color: #fff;
-  box-shadow: 0 1rem 2.5rem var(--color-shadow);
+  box-shadow: 0 1rem 2.5rem var(--color-shadow-strong);
 }
 
 .dashboard-hero__label,
@@ -312,7 +346,6 @@
 .dashboard-widget {
   display: grid;
   min-height: 11rem;
-  align-content: start;
   gap: var(--space-3);
   padding: var(--space-4);
   border: 1px solid var(--color-border);
@@ -321,11 +354,17 @@
   box-shadow: 0 0.75rem 2rem var(--color-shadow);
 }
 
+.dashboard-widget > .button {
+  align-self: end;
+  margin-top: auto;
+}
+
 .dashboard-widget--accent {
   background: var(--color-surface-muted);
 }
 
 .dashboard-widget__title {
+  color: var(--color-primary);
   font-size: 1rem;
   font-weight: 900;
 }
@@ -395,6 +434,10 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+.quick-actions .button {
+  min-width: 8.5rem;
 }
 
 .next-activity {
@@ -552,7 +595,7 @@
 }
 
 .field-warning {
-  color: #8c4a2f;
+  color: var(--color-warning);
   font-size: 0.84rem;
   font-weight: 800;
 }
@@ -592,7 +635,7 @@
 }
 
 .budget-summary-card.is-negative strong {
-  color: #a7382f;
+  color: var(--color-danger);
 }
 
 .budget-progress-card {
@@ -629,7 +672,7 @@
 }
 
 .budget-progress.is-over span {
-  background: #a7382f;
+  background: var(--color-danger);
 }
 
 .budget-progress.is-complete span {
@@ -667,6 +710,7 @@
   color: var(--color-text-muted);
   font-size: 0.86rem;
   font-weight: 900;
+  padding: 0.45rem 0.55rem;
 }
 
 .segmented-control__button[aria-pressed="true"] {
@@ -765,11 +809,11 @@
 
 .badge--warning {
   background: var(--color-accent-soft);
-  color: #8c4a2f;
+  color: var(--color-warning);
 }
 
 .badge--danger {
-  background: #fff6f4;
+  background: var(--color-danger-soft);
   color: #8c2f28;
 }
 
@@ -1047,6 +1091,14 @@
   padding: 0.72rem 0.8rem;
 }
 
+.form-field input:focus,
+.form-field textarea:focus,
+.form-field select:focus,
+.notes-search input:focus,
+.select-filter select:focus {
+  border-color: var(--color-primary);
+}
+
 .form-field textarea {
   resize: vertical;
 }
@@ -1057,7 +1109,7 @@
   padding: var(--space-3);
   border: 1px solid rgb(167 56 47 / 28%);
   border-radius: var(--radius-sm);
-  background: #fff6f4;
+  background: var(--color-danger-soft);
   color: #8c2f28;
   font-size: 0.9rem;
 }
@@ -1083,7 +1135,7 @@
 .bottom-nav {
   position: fixed;
   right: var(--space-3);
-  bottom: var(--space-3);
+  bottom: calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
   left: var(--space-3);
   z-index: 30;
   display: grid;
@@ -1110,6 +1162,10 @@
   text-align: center;
 }
 
+.bottom-nav__link:focus-visible {
+  outline-offset: -3px;
+}
+
 .bottom-nav__icon {
   font-size: 1.15rem;
   line-height: 1;
@@ -1126,7 +1182,7 @@
 .toast-root {
   position: fixed;
   right: var(--space-4);
-  bottom: var(--space-4);
+  bottom: calc(var(--bottom-nav-height) + var(--space-6) + env(safe-area-inset-bottom, 0px));
   z-index: 50;
   display: grid;
   gap: var(--space-2);
@@ -1179,6 +1235,42 @@
   border-radius: 50%;
   background: var(--color-surface-muted);
   font-weight: 900;
+}
+
+@media (max-width: 520px) {
+  .button {
+    width: 100%;
+  }
+
+  .trip-card__actions,
+  .home-actions,
+  .template-actions,
+  .form-actions,
+  .quick-actions,
+  .data-management__actions {
+    width: 100%;
+  }
+
+  .trip-card__actions .button,
+  .home-actions .button,
+  .template-actions .button,
+  .form-actions .button,
+  .quick-actions .button,
+  .data-management__actions .button {
+    flex: 1 1 100%;
+  }
+
+  .budget-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .expense-card__main {
+    display: grid;
+  }
+
+  .expense-card__amount {
+    text-align: left;
+  }
 }
 
 @media (min-width: 620px) {

@@ -67,11 +67,11 @@
   max-width: var(--content-max-width);
   flex: 1;
   margin: 0 auto;
-  padding: var(--space-5) var(--space-4) var(--space-8);
+  padding: var(--space-5) var(--space-4) calc(var(--space-8) + env(safe-area-inset-bottom, 0px));
 }
 
 .app-main.has-bottom-nav {
-  padding-bottom: calc(var(--bottom-nav-height) + var(--space-6));
+  padding-bottom: calc(var(--bottom-nav-height) + var(--space-8) + env(safe-area-inset-bottom, 0px));
 }
 
 .page {
@@ -109,6 +109,7 @@
 
 .home-hero {
   align-items: start;
+  gap: var(--space-4);
 }
 
 @media (min-width: 720px) {

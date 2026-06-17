@@ -141,7 +141,7 @@ function renderEmptyState() {
   return `
     <article class="empty-state">
       <h2>Nessun task ancora</h2>
-      <p>Aggiungi i primi controlli o carica il template base per partire da una checklist di viaggio pronta.</p>
+      <p>Crea la checklist del viaggio o carica un template pre-partenza pronto da adattare.</p>
       <div class="template-actions">
         <button class="button button--primary" type="button" data-action="open-checklist-form">Aggiungi task</button>
         <button class="button button--ghost" type="button" data-action="load-checklist-template">Carica template base</button>

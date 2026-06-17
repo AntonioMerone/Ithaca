@@ -436,7 +436,7 @@ function renderEmptyState() {
   return `
     <article class="empty-state">
       <h2>Nessun viaggio ancora</h2>
-      <p>Crea il tuo primo dossier di viaggio e tieni sotto controllo budget, tappe e checklist.</p>
+      <p>Crea il tuo primo dossier e organizza budget, tappe, checklist e note del viaggio in un unico posto.</p>
       <button class="button button--primary" type="button" data-action="open-trip-form">Crea viaggio</button>
     </article>
   `;
@@ -452,10 +452,13 @@ function renderTripCard(trip) {
       <a class="trip-card__main" href="#/trip/${encodeURIComponent(trip.id)}" aria-label="Apri ${escapeHtml(trip.name)}">
         <h2 class="trip-card__title">${escapeHtml(trip.name)}</h2>
         <p class="trip-card__destinations">${formatDestinations(trip.destinations)}</p>
-        <p class="trip-card__dates">${formatDate(trip.startDate)} - ${formatDate(trip.endDate)}</p>
-        <p class="trip-card__meta">${duration} giorni &middot; ${escapeHtml(countdown)}</p>
-        <p class="trip-card__budget">Budget: ${formatCurrency(trip.budgetTotal, trip.currency)} <span>${escapeHtml(trip.currency)}</span></p>
-        ${notes ? `<p class="trip-card__notes">${escapeHtml(notes)}</p>` : ""}
+        <div class="trip-card__details">
+          <span>${formatDate(trip.startDate)} - ${formatDate(trip.endDate)}</span>
+          <span>${duration} giorni</span>
+          <span>${escapeHtml(countdown)}</span>
+        </div>
+        <p class="trip-card__budget">Budget previsto: ${formatCurrency(trip.budgetTotal, trip.currency)} <span>${escapeHtml(trip.currency)}</span></p>
+        ${notes ? `<p class="trip-card__notes">Nota: ${escapeHtml(notes)}</p>` : ""}
       </a>
       <div class="trip-card__actions" aria-label="Azioni viaggio">
         <button class="button button--small button--ghost" type="button" data-action="edit-trip" data-trip-id="${escapeHtml(trip.id)}">Modifica</button>
@@ -487,7 +490,7 @@ export function renderHomeView() {
         <div>
           <p class="page__eyebrow">Travel dossier</p>
           <h1 class="page__title" id="home-title">Ithaca</h1>
-          <p class="page__summary">Il dossier digitale del tuo viaggio</p>
+          <p class="page__summary">Ithaca organizza budget, tappe, checklist e note del viaggio in un unico dossier.</p>
         </div>
         <div class="home-actions">
           <button class="button button--ghost" type="button" data-action="open-data-management">Gestione dati</button>

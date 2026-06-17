@@ -1,6 +1,13 @@
+function handleModalKeydown(event) {
+  if (event.key === "Escape") {
+    closeModal();
+  }
+}
+
 export function openModal({ title = "Dettaglio", content = "" } = {}) {
   const root = document.querySelector("#modal-root");
 
+  document.removeEventListener("keydown", handleModalKeydown);
   root.innerHTML = `
     <div class="modal-backdrop" role="presentation">
       <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
@@ -14,14 +21,17 @@ export function openModal({ title = "Dettaglio", content = "" } = {}) {
   `;
 
   root.querySelector(".modal__close").addEventListener("click", closeModal);
+  root.querySelector(".modal__close").focus();
   root.querySelector(".modal-backdrop").addEventListener("click", (event) => {
     if (event.target.classList.contains("modal-backdrop")) {
       closeModal();
     }
   });
+  document.addEventListener("keydown", handleModalKeydown);
 }
 
 export function closeModal() {
   const root = document.querySelector("#modal-root");
   root.innerHTML = "";
+  document.removeEventListener("keydown", handleModalKeydown);
 }
