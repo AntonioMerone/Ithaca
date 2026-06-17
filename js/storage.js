@@ -5,7 +5,8 @@ const DATA_KEY = "data";
 const DEFAULT_DATA = {
   trips: [],
   expenses: [],
-  timelineItems: []
+  timelineItems: [],
+  checklistItems: []
 };
 
 function keyFor(key) {
@@ -18,7 +19,8 @@ function normalizeData(data) {
     ...(data && typeof data === "object" ? data : {}),
     trips: Array.isArray(data?.trips) ? data.trips : [],
     expenses: Array.isArray(data?.expenses) ? data.expenses : [],
-    timelineItems: Array.isArray(data?.timelineItems) ? data.timelineItems : []
+    timelineItems: Array.isArray(data?.timelineItems) ? data.timelineItems : [],
+    checklistItems: Array.isArray(data?.checklistItems) ? data.checklistItems : []
   };
 }
 
@@ -114,6 +116,7 @@ export function deleteTrip(id) {
   data.trips = data.trips.filter((trip) => trip.id !== id);
   data.expenses = data.expenses.filter((expense) => expense.tripId !== id);
   data.timelineItems = data.timelineItems.filter((item) => item.tripId !== id);
+  data.checklistItems = data.checklistItems.filter((item) => item.tripId !== id);
   saveData(data);
   return data.trips.length !== initialCount;
 }
@@ -252,4 +255,82 @@ export function deleteTimelineItem(id) {
   data.timelineItems = data.timelineItems.filter((item) => item.id !== id);
   saveData(data);
   return data.timelineItems.length !== initialCount;
+}
+
+export function getChecklistItems() {
+  return getData().checklistItems;
+}
+
+export function getChecklistItemsByTripId(tripId) {
+  return getChecklistItems().filter((item) => item.tripId === tripId);
+}
+
+export function getChecklistItemById(id) {
+  return getChecklistItems().find((item) => item.id === id) || null;
+}
+
+export function createChecklistItem(itemData) {
+  const data = getData();
+  const now = new Date().toISOString();
+  const item = {
+    id: generateId("check"),
+    tripId: "",
+    title: "",
+    section: "pre_departure",
+    completed: false,
+    dueDate: "",
+    notes: "",
+    ...itemData,
+    createdAt: now,
+    updatedAt: now
+  };
+
+  data.checklistItems = [item, ...data.checklistItems];
+  saveData(data);
+  return item;
+}
+
+export function updateChecklistItem(id, updates) {
+  const data = getData();
+  let updatedItem = null;
+
+  data.checklistItems = data.checklistItems.map((item) => {
+    if (item.id !== id) {
+      return item;
+    }
+
+    updatedItem = {
+      ...item,
+      ...updates,
+      id: item.id,
+      tripId: item.tripId,
+      createdAt: item.createdAt,
+      updatedAt: new Date().toISOString()
+    };
+
+    return updatedItem;
+  });
+
+  saveData(data);
+  return updatedItem;
+}
+
+export function deleteChecklistItem(id) {
+  const data = getData();
+  const initialCount = data.checklistItems.length;
+  data.checklistItems = data.checklistItems.filter((item) => item.id !== id);
+  saveData(data);
+  return data.checklistItems.length !== initialCount;
+}
+
+export function toggleChecklistItem(id) {
+  const item = getChecklistItemById(id);
+
+  if (!item) {
+    return null;
+  }
+
+  return updateChecklistItem(id, {
+    completed: !item.completed
+  });
 }

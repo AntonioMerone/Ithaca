@@ -1,14 +1,17 @@
-import { getExpensesByTripId, getTimelineItemsByTripId, getTripById } from "../storage.js";
+import { getChecklistItemsByTripId, getExpensesByTripId, getTimelineItemsByTripId, getTripById } from "../storage.js";
 import {
   calculateBudgetSummary,
+  calculateChecklistSummary,
   calculateCountdown,
   calculateTripDuration,
   determineTripStatus,
   escapeHtml,
   formatCurrency,
   formatDate,
+  getOpenChecklistItems,
   getDaysUntilTrip,
   getNextTimelineItem,
+  isChecklistItemOverdue,
   sortTimelineItems
 } from "../utils.js";
 
@@ -176,6 +179,38 @@ function renderTimelineWidget(items, basePath) {
   `;
 }
 
+function renderChecklistWidget(items, basePath) {
+  const summary = calculateChecklistSummary(items);
+  const openItems = getOpenChecklistItems(items, 3);
+  const overdueCount = items.filter(isChecklistItemOverdue).length;
+
+  if (items.length === 0) {
+    return renderSectionWidget({
+      title: "Checklist",
+      body: "Checklist non ancora configurata",
+      href: `${basePath}/checklist`,
+      cta: "Vai alla checklist"
+    });
+  }
+
+  return `
+    <article class="dashboard-widget">
+      <h2 class="dashboard-widget__title">Checklist</h2>
+      <p class="dashboard-widget__body">${summary.completed}/${summary.total} completati &middot; ${summary.completionRate}%</p>
+      <div class="budget-progress checklist-widget-progress" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${summary.completionRate}">
+        <span style="width: ${summary.completionRate}%"></span>
+      </div>
+      ${overdueCount > 0 ? `<p class="budget-warning">${overdueCount} task scaduti</p>` : ""}
+      ${openItems.length > 0 ? `
+        <ul class="mini-list" aria-label="Primi task aperti">
+          ${openItems.map((item) => `<li>${escapeHtml(item.title)}</li>`).join("")}
+        </ul>
+      ` : `<p class="dashboard-widget__body">Tutti i task sono completati.</p>`}
+      <a class="button button--ghost button--small" href="${basePath}/checklist">Vai alla checklist</a>
+    </article>
+  `;
+}
+
 export function renderTripDashboardView({ params }) {
   const trip = getTripById(params.tripId);
 
@@ -193,6 +228,11 @@ export function renderTripDashboardView({ params }) {
   const expenses = getExpensesByTripId(trip.id);
   const budget = calculateBudgetSummary(trip, expenses);
   const timelineItems = getTimelineItemsByTripId(trip.id);
+  const checklistItems = getChecklistItemsByTripId(trip.id);
+  const openChecklistActions = getOpenChecklistItems(checklistItems, 3);
+  const nextActions = openChecklistActions.length > 0
+    ? openChecklistActions.map((item) => item.title)
+    : getNextActions(status);
 
   return `
     <section class="page dashboard-page" aria-labelledby="trip-title">
@@ -239,12 +279,7 @@ export function renderTripDashboardView({ params }) {
 
         ${renderTimelineWidget(timelineItems, basePath)}
 
-        ${renderSectionWidget({
-          title: "Checklist",
-          body: "Checklist non ancora configurata",
-          href: `${basePath}/checklist`,
-          cta: "Vai alla checklist"
-        })}
+        ${renderChecklistWidget(checklistItems, basePath)}
 
         ${renderSectionWidget({
           title: "Note",
@@ -257,7 +292,7 @@ export function renderTripDashboardView({ params }) {
       <section class="panel panel--wide action-section" aria-labelledby="next-actions-title">
         <h2 class="panel__title" id="next-actions-title">Prossime azioni</h2>
         <ul class="action-list">
-          ${getNextActions(status).map((action) => `<li>${escapeHtml(action)}</li>`).join("")}
+          ${nextActions.map((action) => `<li>${escapeHtml(action)}</li>`).join("")}
         </ul>
       </section>
 

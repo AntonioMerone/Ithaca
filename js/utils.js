@@ -30,6 +30,12 @@ export const TIMELINE_TYPES = [
 
 export const TIMELINE_PAYMENT_STATUSES = ["paid", "unpaid", "none"];
 
+export const CHECKLIST_SECTIONS = [
+  "pre_departure",
+  "during_trip",
+  "after_trip"
+];
+
 function parseDate(value) {
   if (!value) {
     return null;
@@ -184,6 +190,83 @@ export function getTimelinePaymentStatusLabel(status) {
   };
 
   return labels[status] || labels.none;
+}
+
+export function getChecklistSectionLabel(section) {
+  const labels = {
+    pre_departure: "Pre-partenza",
+    during_trip: "Durante il viaggio",
+    after_trip: "Al rientro"
+  };
+
+  return labels[section] || labels.pre_departure;
+}
+
+export function calculateChecklistSummary(items = []) {
+  const total = items.length;
+  const completed = items.filter((item) => item.completed).length;
+  const open = total - completed;
+  const completionRate = total === 0 ? 0 : Math.round((completed / total) * 100);
+
+  return {
+    total,
+    completed,
+    open,
+    completionRate
+  };
+}
+
+export function sortChecklistItems(items = []) {
+  return [...items].sort((a, b) => {
+    const sectionComparison = CHECKLIST_SECTIONS.indexOf(a.section) - CHECKLIST_SECTIONS.indexOf(b.section);
+
+    if (sectionComparison !== 0) {
+      return sectionComparison;
+    }
+
+    if (a.completed !== b.completed) {
+      return a.completed ? 1 : -1;
+    }
+
+    const aDue = a.dueDate || "9999-12-31";
+    const bDue = b.dueDate || "9999-12-31";
+    const dueComparison = aDue.localeCompare(bDue);
+
+    if (dueComparison !== 0) {
+      return dueComparison;
+    }
+
+    return String(a.createdAt || "").localeCompare(String(b.createdAt || ""));
+  });
+}
+
+export function groupChecklistItemsBySection(items = []) {
+  return sortChecklistItems(items).reduce((groups, item) => {
+    const section = CHECKLIST_SECTIONS.includes(item.section) ? item.section : "pre_departure";
+    groups[section] = groups[section] || [];
+    groups[section].push(item);
+    return groups;
+  }, {});
+}
+
+export function getOpenChecklistItems(items = [], limit = 3) {
+  return sortChecklistItems(items)
+    .filter((item) => !item.completed)
+    .slice(0, limit);
+}
+
+export function isChecklistItemOverdue(item) {
+  if (!item?.dueDate || item.completed) {
+    return false;
+  }
+
+  const dueDate = parseDate(item.dueDate);
+
+  if (!dueDate) {
+    return false;
+  }
+
+  return dueDate < startOfToday();
 }
 
 export function sortTimelineItems(items = []) {
