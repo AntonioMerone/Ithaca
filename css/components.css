@@ -78,6 +78,12 @@
   font-size: 0.8rem;
 }
 
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  transform: none;
+}
+
 .placeholder-list {
   display: grid;
   gap: var(--space-3);
@@ -182,6 +188,25 @@
 .trip-card__details,
 .trip-card__notes {
   color: var(--color-text-muted);
+}
+
+.trip-card__destinations {
+  font-weight: 800;
+}
+
+.trip-card__destination-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: 0.84rem;
+}
+
+.trip-card__destination-meta span {
+  display: inline-flex;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  background: var(--color-surface-muted);
 }
 
 .trip-card__details {
@@ -336,6 +361,80 @@
 
 .dashboard-hero__budget strong {
   font-size: 1.55rem;
+}
+
+.destinations-section {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.destinations-section__header {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.destinations-strip {
+  display: grid;
+  grid-auto-columns: minmax(14rem, 78vw);
+  grid-auto-flow: column;
+  gap: var(--space-3);
+  margin-inline: calc(var(--space-4) * -1);
+  overflow-x: auto;
+  padding: 0 var(--space-4) var(--space-2);
+  scroll-snap-type: x proximity;
+}
+
+.destination-card {
+  display: grid;
+  min-height: 13rem;
+  align-content: start;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: 0 0.75rem 2rem var(--color-shadow);
+  scroll-snap-align: start;
+}
+
+.destination-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.destination-card__index {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 900;
+}
+
+.destination-card h3 {
+  color: var(--color-primary);
+  font-size: 1.08rem;
+  line-height: 1.25;
+}
+
+.destination-card__meta,
+.destination-card__hotel {
+  color: var(--color-text-muted);
+  font-size: 0.92rem;
+}
+
+.destination-card__hotel {
+  font-weight: 800;
+}
+
+.destination-card__budget {
+  margin-top: auto;
+  color: var(--color-primary);
+  font-weight: 900;
 }
 
 .dashboard-grid {
@@ -1066,6 +1165,60 @@
   gap: var(--space-4);
 }
 
+.destinations-form {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted);
+}
+
+.destinations-form__header {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.destinations-form__header h2 {
+  color: var(--color-primary);
+  font-size: 1rem;
+}
+
+.destinations-form__header p {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.destinations-form__list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.destination-form-card {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.destination-form-card__header {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.destination-form-card__header h3 {
+  color: var(--color-primary);
+  font-size: 0.98rem;
+}
+
+.destination-form-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
 .form-grid {
   display: grid;
   gap: var(--space-3);
@@ -1254,6 +1407,7 @@
   .trip-card__actions,
   .home-actions,
   .template-actions,
+  .destination-form-card__actions,
   .form-actions,
   .quick-actions,
   .data-management__actions {
@@ -1263,6 +1417,7 @@
   .trip-card__actions .button,
   .home-actions .button,
   .template-actions .button,
+  .destination-form-card__actions .button,
   .form-actions .button,
   .quick-actions .button,
   .data-management__actions .button {
@@ -1302,6 +1457,18 @@
 
   .dashboard-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .destinations-form__header,
+  .destination-form-card__header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+
+  .destinations-strip {
+    grid-auto-columns: minmax(15rem, 18rem);
+    margin-inline: 0;
+    padding-inline: 0;
   }
 
   .budget-toolbar {

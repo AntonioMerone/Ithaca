@@ -1,4 +1,4 @@
-import { generateId } from "./utils.js";
+import { generateId, normalizeDestinations } from "./utils.js";
 
 export const STORAGE_KEY = "ithaca:data";
 export const LEGACY_STORAGE_KEYS = ["odysseus:data"];
@@ -19,11 +19,29 @@ function getDefaultData() {
   };
 }
 
+function normalizeTrip(trip) {
+  const source = trip && typeof trip === "object" ? trip : {};
+
+  return {
+    ...source,
+    id: String(source.id || generateId("trip")),
+    name: String(source.name || ""),
+    destinations: normalizeDestinations(source.destinations, source),
+    startDate: String(source.startDate || ""),
+    endDate: String(source.endDate || ""),
+    budgetTotal: Number.isFinite(Number(source.budgetTotal)) ? Number(source.budgetTotal) : 0,
+    currency: String(source.currency || "EUR").toUpperCase(),
+    notes: String(source.notes || ""),
+    createdAt: source.createdAt || "",
+    updatedAt: source.updatedAt || ""
+  };
+}
+
 function normalizeData(data) {
   return {
     ...getDefaultData(),
     ...(data && typeof data === "object" ? data : {}),
-    trips: Array.isArray(data?.trips) ? data.trips : [],
+    trips: Array.isArray(data?.trips) ? data.trips.map(normalizeTrip) : [],
     expenses: Array.isArray(data?.expenses) ? data.expenses : [],
     timelineItems: Array.isArray(data?.timelineItems) ? data.timelineItems : [],
     checklistItems: Array.isArray(data?.checklistItems) ? data.checklistItems : [],
@@ -98,7 +116,14 @@ export function getData() {
   }
 
   try {
-    return normalizeData(JSON.parse(rawValue));
+    const parsedData = JSON.parse(rawValue);
+    const normalizedData = normalizeData(parsedData);
+
+    if (JSON.stringify(parsedData) !== JSON.stringify(normalizedData)) {
+      writeStorage(DATA_KEY, normalizedData);
+    }
+
+    return normalizedData;
   } catch (error) {
     console.warn("Ithaca: dati locali corrotti, backup di sicurezza creato.", error);
     preserveCorruptedData(rawValue);
@@ -216,7 +241,7 @@ export function getTripById(id) {
 export function createTrip(tripData) {
   const data = getData();
   const now = new Date().toISOString();
-  const trip = {
+  const trip = normalizeTrip({
     id: generateId("trip"),
     name: "",
     destinations: [],
@@ -228,7 +253,7 @@ export function createTrip(tripData) {
     ...tripData,
     createdAt: now,
     updatedAt: now
-  };
+  });
 
   data.trips = [trip, ...data.trips];
   saveData(data);
@@ -244,13 +269,13 @@ export function updateTrip(id, updates) {
       return trip;
     }
 
-    updatedTrip = {
+    updatedTrip = normalizeTrip({
       ...trip,
       ...updates,
       id: trip.id,
       createdAt: trip.createdAt,
       updatedAt: new Date().toISOString()
-    };
+    });
 
     return updatedTrip;
   });

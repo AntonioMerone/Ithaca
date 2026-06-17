@@ -99,6 +99,145 @@ export function formatCurrency(value, currency = "EUR", locale = "it-IT") {
   return `${sign}${integerPart}${decimalPart} ${symbol}`;
 }
 
+function normalizeBudgetEstimate(value) {
+  if (value === "" || value === null || value === undefined) {
+    return null;
+  }
+
+  const amount = Number(value);
+  return Number.isFinite(amount) && amount >= 0 ? amount : null;
+}
+
+function normalizeDateValue(value) {
+  return parseDate(value) ? String(value) : "";
+}
+
+function createDestinationFromString(value, index, trip = {}) {
+  const name = String(value || "").trim();
+  const isSingleDestination = Array.isArray(trip?.destinations) && trip.destinations.length === 1;
+
+  return {
+    id: generateId("dest"),
+    name,
+    arrivalDate: isSingleDestination ? normalizeDateValue(trip.startDate) : "",
+    departureDate: isSingleDestination ? normalizeDateValue(trip.endDate) : "",
+    hotel: "",
+    hotelCheckIn: "",
+    hotelCheckOut: "",
+    budgetEstimate: null,
+    notes: ""
+  };
+}
+
+export function normalizeDestinations(destinations = [], trip = {}) {
+  const source = Array.isArray(destinations)
+    ? destinations
+    : String(destinations || "")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+  return source
+    .map((destination, index) => {
+      if (typeof destination === "string") {
+        return createDestinationFromString(destination, index, {
+          ...trip,
+          destinations: source
+        });
+      }
+
+      if (!destination || typeof destination !== "object") {
+        return null;
+      }
+
+      return {
+        id: String(destination.id || generateId("dest")),
+        name: String(destination.name || "").trim(),
+        arrivalDate: normalizeDateValue(destination.arrivalDate),
+        departureDate: normalizeDateValue(destination.departureDate),
+        hotel: String(destination.hotel || "").trim(),
+        hotelCheckIn: normalizeDateValue(destination.hotelCheckIn),
+        hotelCheckOut: normalizeDateValue(destination.hotelCheckOut),
+        budgetEstimate: normalizeBudgetEstimate(destination.budgetEstimate),
+        notes: String(destination.notes || "").trim()
+      };
+    })
+    .filter((destination) => destination && destination.name);
+}
+
+export function calcNights(arrivalDate, departureDate) {
+  const arrival = parseDate(arrivalDate);
+  const departure = parseDate(departureDate);
+
+  if (!arrival || !departure || departure <= arrival) {
+    return null;
+  }
+
+  return daysBetween(arrival, departure);
+}
+
+export function calcDestinationsBudget(destinations = []) {
+  return normalizeDestinations(destinations).reduce((total, destination) => {
+    return total + (destination.budgetEstimate === null ? 0 : destination.budgetEstimate);
+  }, 0);
+}
+
+export function formatDestinationRange(arrivalDate, departureDate) {
+  if (arrivalDate && departureDate) {
+    return `${formatDate(arrivalDate)} - ${formatDate(departureDate)}`;
+  }
+
+  if (arrivalDate) {
+    return `Da ${formatDate(arrivalDate)}`;
+  }
+
+  if (departureDate) {
+    return `Fino a ${formatDate(departureDate)}`;
+  }
+
+  return "";
+}
+
+function toDateKey(value) {
+  const date = value ? parseDate(value) || new Date(value) : startOfToday();
+
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0")
+  ].join("-");
+}
+
+export function getCurrentDestination(destinations = [], today = null) {
+  const todayKey = toDateKey(today);
+
+  if (!todayKey) {
+    return null;
+  }
+
+  return normalizeDestinations(destinations).find((destination) => {
+    return destination.arrivalDate && destination.departureDate
+      && destination.arrivalDate <= todayKey
+      && destination.departureDate >= todayKey;
+  }) || null;
+}
+
+export function getNextDestination(destinations = [], today = null) {
+  const todayKey = toDateKey(today);
+
+  if (!todayKey) {
+    return null;
+  }
+
+  return normalizeDestinations(destinations)
+    .filter((destination) => destination.arrivalDate && destination.arrivalDate >= todayKey)
+    .sort((a, b) => a.arrivalDate.localeCompare(b.arrivalDate))[0] || null;
+}
+
 export function calculateBudgetSummary(trip, expenses = []) {
   const budgetTotal = Number(trip?.budgetTotal || 0);
   const paidTotal = expenses.reduce((total, expense) => {

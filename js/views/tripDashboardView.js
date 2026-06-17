@@ -4,10 +4,12 @@ import {
   calculateChecklistSummary,
   calculateCountdown,
   calculateTripDuration,
+  calcNights,
   determineTripStatus,
   escapeHtml,
   formatCurrency,
   formatDate,
+  formatDestinationRange,
   getOpenChecklistItems,
   getNoteDestinations,
   getNotePreview,
@@ -15,15 +17,18 @@ import {
   getNextTimelineItem,
   isChecklistItemOverdue,
   sortNotes,
+  normalizeDestinations,
   sortTimelineItems
 } from "../utils.js";
 
-function formatDestinations(destinations) {
-  if (!destinations || destinations.length === 0) {
+function formatDestinations(destinations = []) {
+  const normalized = normalizeDestinations(destinations);
+
+  if (normalized.length === 0) {
     return "Destinazioni da definire";
   }
 
-  return destinations.map(escapeHtml).join(" &middot; ");
+  return normalized.map((destination) => escapeHtml(destination.name)).join(" &rarr; ");
 }
 
 function getStatusLabel(status) {
@@ -77,9 +82,53 @@ function getCountdownCaption(status) {
   return captions[status] || captions.future;
 }
 
-function getNextActions(status) {
+function getDestinationStatus(destination) {
+  const status = determineTripStatus(destination.arrivalDate, destination.departureDate);
+
+  if (!destination.arrivalDate && !destination.departureDate) {
+    return "";
+  }
+
+  if (status === "ongoing" || status === "starts_today") {
+    return "In corso";
+  }
+
+  if (status === "past") {
+    return "Conclusa";
+  }
+
+  return "Futura";
+}
+
+function getDestinationStatusClass(label) {
+  const classes = {
+    "In corso": "badge--success",
+    Conclusa: "",
+    Futura: "badge--warning"
+  };
+
+  return classes[label] || "";
+}
+
+function getNextActions(status, destinations = []) {
+  const normalizedDestinations = normalizeDestinations(destinations);
+  const destinationActions = [];
+
+  if (normalizedDestinations.length === 0) {
+    destinationActions.push("Aggiungi le destinazioni principali del viaggio.");
+  } else {
+    if (normalizedDestinations.some((destination) => !destination.arrivalDate || !destination.departureDate)) {
+      destinationActions.push("Completa le date delle destinazioni.");
+    }
+
+    if (normalizedDestinations.some((destination) => destination.budgetEstimate === null)) {
+      destinationActions.push("Aggiungi un budget indicativo per le destinazioni principali.");
+    }
+  }
+
   if (status === "ongoing") {
     return [
+      ...destinationActions,
       "Controlla le attivita di oggi.",
       "Aggiorna le spese.",
       "Consulta le note di viaggio."
@@ -88,6 +137,7 @@ function getNextActions(status) {
 
   if (status === "past") {
     return [
+      ...destinationActions,
       "Rivedi il budget finale.",
       "Conserva le note del viaggio.",
       "Duplica il viaggio come template futuro."
@@ -96,6 +146,7 @@ function getNextActions(status) {
 
   if (status === "starts_today") {
     return [
+      ...destinationActions,
       "Controlla documenti e check-in.",
       "Apri la timeline per le prime tappe.",
       "Tieni le note utili a portata di mano."
@@ -103,11 +154,60 @@ function getNextActions(status) {
   }
 
   return [
+    ...destinationActions,
     "Aggiungi le prime tappe alla timeline.",
     "Inserisci le spese principali nel budget.",
     "Crea la checklist pre-partenza.",
     "Salva note utili sulle destinazioni."
   ];
+}
+
+function renderDestinationCard(destination, index, currency) {
+  const range = formatDestinationRange(destination.arrivalDate, destination.departureDate);
+  const nights = calcNights(destination.arrivalDate, destination.departureDate);
+  const statusLabel = getDestinationStatus(destination);
+  const statusClass = getDestinationStatusClass(statusLabel);
+
+  return `
+    <article class="destination-card">
+      <div class="destination-card__header">
+        <span class="destination-card__index">${index + 1}</span>
+        ${statusLabel ? `<span class="badge ${statusClass}">${escapeHtml(statusLabel)}</span>` : ""}
+      </div>
+      <h3>${escapeHtml(destination.name)}</h3>
+      ${range ? `<p class="destination-card__meta">${escapeHtml(range)}</p>` : ""}
+      ${nights ? `<p class="destination-card__meta">${nights} ${nights === 1 ? "notte" : "notti"}</p>` : ""}
+      ${destination.hotel ? `<p class="destination-card__hotel">${escapeHtml(destination.hotel)}</p>` : ""}
+      ${destination.budgetEstimate !== null ? `<p class="destination-card__budget">${formatCurrency(destination.budgetEstimate, currency)}</p>` : ""}
+    </article>
+  `;
+}
+
+function renderDestinationsSection(destinations = [], currency = "EUR") {
+  const normalizedDestinations = normalizeDestinations(destinations);
+
+  if (normalizedDestinations.length === 0) {
+    return `
+      <section class="panel panel--wide destinations-section" aria-labelledby="destinations-title">
+        <div class="destinations-section__header">
+          <h2 class="panel__title" id="destinations-title">Destinazioni</h2>
+          <p class="panel__body">Aggiungi le destinazioni principali dal form viaggio.</p>
+        </div>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="destinations-section" aria-labelledby="destinations-title">
+      <div class="destinations-section__header">
+        <h2 class="panel__title" id="destinations-title">Destinazioni</h2>
+        <p class="panel__body">${normalizedDestinations.length} ${normalizedDestinations.length === 1 ? "fase" : "fasi"} del viaggio</p>
+      </div>
+      <div class="destinations-strip" aria-label="Destinazioni del viaggio">
+        ${normalizedDestinations.map((destination, index) => renderDestinationCard(destination, index, currency)).join("")}
+      </div>
+    </section>
+  `;
 }
 
 function renderMissingTrip() {
@@ -251,7 +351,8 @@ export function renderTripDashboardView({ params }) {
 
   const encodedTripId = encodeURIComponent(trip.id);
   const basePath = `#/trip/${encodedTripId}`;
-  const destinations = formatDestinations(trip.destinations);
+  const normalizedDestinations = normalizeDestinations(trip.destinations, trip);
+  const destinations = formatDestinations(normalizedDestinations);
   const duration = calculateTripDuration(trip.startDate, trip.endDate);
   const countdown = calculateCountdown(trip.startDate, trip.endDate);
   const status = determineTripStatus(trip.startDate, trip.endDate);
@@ -262,9 +363,10 @@ export function renderTripDashboardView({ params }) {
   const checklistItems = getChecklistItemsByTripId(trip.id);
   const notes = getNotesByTripId(trip.id);
   const openChecklistActions = getOpenChecklistItems(checklistItems, 3);
+  const destinationAwareActions = getNextActions(status, normalizedDestinations);
   const nextActions = openChecklistActions.length > 0
-    ? openChecklistActions.map((item) => item.title)
-    : getNextActions(status);
+    ? [...destinationAwareActions.slice(0, 3), ...openChecklistActions.map((item) => item.title)]
+    : destinationAwareActions;
 
   return `
     <section class="page dashboard-page" aria-labelledby="trip-title">
@@ -288,6 +390,8 @@ export function renderTripDashboardView({ params }) {
           <strong>${formatCurrency(budget.budgetTotal, trip.currency)}</strong>
         </div>
       </article>
+
+      ${renderDestinationsSection(normalizedDestinations, trip.currency)}
 
       <section class="dashboard-grid" aria-label="Widget principali">
         <article class="dashboard-widget dashboard-widget--accent">

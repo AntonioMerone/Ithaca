@@ -16,26 +16,86 @@ import {
   calculateTripDuration,
   escapeHtml,
   formatCurrency,
-  formatDate
+  formatDate,
+  formatDestinationRange,
+  generateId,
+  normalizeDestinations
 } from "../utils.js";
 
 const DEFAULT_CURRENCY = "EUR";
 let homeHandlersReady = false;
 let pendingImportText = "";
 
-function parseDestinations(value) {
-  return String(value || "")
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
+function createBlankDestination() {
+  return {
+    id: generateId("dest"),
+    name: "",
+    arrivalDate: "",
+    departureDate: "",
+    hotel: "",
+    hotelCheckIn: "",
+    hotelCheckOut: "",
+    budgetEstimate: null,
+    notes: ""
+  };
 }
 
-function formatDestinations(destinations) {
-  if (!destinations || destinations.length === 0) {
+function normalizeDestinationForForm(destination) {
+  return {
+    ...createBlankDestination(),
+    ...(destination && typeof destination === "object" ? destination : {}),
+    name: typeof destination === "string" ? destination : destination?.name || "",
+    budgetEstimate: destination?.budgetEstimate ?? ""
+  };
+}
+
+function getDestinationsForForm(trip) {
+  const rawDestinations = Array.isArray(trip?.destinations) ? trip.destinations : [];
+  const hasBlankDraft = rawDestinations.some((destination) => {
+    return destination && typeof destination === "object" && !String(destination.name || "").trim();
+  });
+  const normalized = hasBlankDraft
+    ? rawDestinations.map(normalizeDestinationForForm)
+    : normalizeDestinations(rawDestinations, trip);
+
+  return normalized.length > 0 ? normalized.map(normalizeDestinationForForm) : [createBlankDestination()];
+}
+
+function formatDestinations(destinations = []) {
+  const normalized = normalizeDestinations(destinations);
+
+  if (normalized.length === 0) {
     return "Destinazioni da definire";
   }
 
-  return destinations.map(escapeHtml).join(" &middot; ");
+  if (normalized.length > 3) {
+    return `${normalized.slice(0, 2).map((destination) => escapeHtml(destination.name)).join(" &rarr; ")} &rarr; +${normalized.length - 2} altre`;
+  }
+
+  return normalized.map((destination) => escapeHtml(destination.name)).join(" &rarr; ");
+}
+
+function renderDestinationMiniMeta(destinations = []) {
+  const normalized = normalizeDestinations(destinations);
+  const datedDestinations = normalized
+    .map((destination) => ({
+      ...destination,
+      range: formatDestinationRange(destination.arrivalDate, destination.departureDate)
+    }))
+    .filter((destination) => destination.range)
+    .slice(0, 2);
+
+  if (datedDestinations.length === 0) {
+    return "";
+  }
+
+  return `
+    <div class="trip-card__destination-meta">
+      ${datedDestinations.map((destination) => `
+        <span>${escapeHtml(destination.name)}: ${escapeHtml(destination.range)}</span>
+      `).join("")}
+    </div>
+  `;
 }
 
 function shortNotes(notes) {
@@ -66,10 +126,59 @@ function fieldError(errors, field) {
   return errors[field] ? `<p class="field-error">${escapeHtml(errors[field])}</p>` : "";
 }
 
+function parseDestinationBudget(value) {
+  const cleanValue = String(value ?? "").trim();
+
+  if (!cleanValue) {
+    return null;
+  }
+
+  const amount = Number(cleanValue);
+  return Number.isFinite(amount) ? amount : Number.NaN;
+}
+
+function parseDestinationsFromForm(formData) {
+  const ids = formData.getAll("destinationId");
+  const names = formData.getAll("destinationName");
+  const arrivalDates = formData.getAll("destinationArrivalDate");
+  const departureDates = formData.getAll("destinationDepartureDate");
+  const hotels = formData.getAll("destinationHotel");
+  const hotelCheckIns = formData.getAll("destinationHotelCheckIn");
+  const hotelCheckOuts = formData.getAll("destinationHotelCheckOut");
+  const budgetEstimates = formData.getAll("destinationBudgetEstimate");
+  const notes = formData.getAll("destinationNotes");
+
+  return ids.map((id, index) => ({
+    id: String(id || generateId("dest")),
+    name: String(names[index] || "").trim(),
+    arrivalDate: String(arrivalDates[index] || "").trim(),
+    departureDate: String(departureDates[index] || "").trim(),
+    hotel: String(hotels[index] || "").trim(),
+    hotelCheckIn: String(hotelCheckIns[index] || "").trim(),
+    hotelCheckOut: String(hotelCheckOuts[index] || "").trim(),
+    budgetEstimate: parseDestinationBudget(budgetEstimates[index]),
+    notes: String(notes[index] || "").trim()
+  }));
+}
+
+function destinationHasAnyValue(destination) {
+  return [
+    destination.name,
+    destination.arrivalDate,
+    destination.departureDate,
+    destination.hotel,
+    destination.hotelCheckIn,
+    destination.hotelCheckOut,
+    destination.budgetEstimate === null ? "" : destination.budgetEstimate,
+    destination.notes
+  ].some((value) => String(value ?? "").trim());
+}
+
 function validateTripForm(formData) {
   const errors = {};
   const name = String(formData.get("name") || "").trim();
-  const destinations = parseDestinations(formData.get("destinations"));
+  const destinationDrafts = parseDestinationsFromForm(formData);
+  const destinations = destinationDrafts.filter(destinationHasAnyValue);
   const startDate = String(formData.get("startDate") || "").trim();
   const endDate = String(formData.get("endDate") || "").trim();
   const budgetValue = String(formData.get("budgetTotal") || "").trim();
@@ -103,11 +212,32 @@ function validateTripForm(formData) {
     errors.currency = "Valuta obbligatoria.";
   }
 
+  destinations.forEach((destination, index) => {
+    if (!destination.name) {
+      errors[`destination_${index}_name`] = `Nome destinazione ${index + 1} obbligatorio.`;
+    }
+
+    if (destination.arrivalDate && destination.departureDate && destination.departureDate < destination.arrivalDate) {
+      errors[`destination_${index}_dates`] = `La partenza della destinazione ${index + 1} non puo precedere l'arrivo.`;
+    }
+
+    if (destination.hotelCheckIn && destination.hotelCheckOut && destination.hotelCheckOut < destination.hotelCheckIn) {
+      errors[`destination_${index}_hotelDates`] = `Il check-out della destinazione ${index + 1} non puo precedere il check-in.`;
+    }
+
+    if (Number.isNaN(destination.budgetEstimate) || destination.budgetEstimate < 0) {
+      errors[`destination_${index}_budget`] = `Il budget della destinazione ${index + 1} deve essere maggiore o uguale a 0.`;
+    }
+  });
+
   return {
     errors,
     values: {
       name,
-      destinations,
+      destinations: destinations.map((destination) => ({
+        ...destination,
+        budgetEstimate: Number.isNaN(destination.budgetEstimate) ? null : destination.budgetEstimate
+      })),
       startDate,
       endDate,
       budgetTotal,
@@ -117,10 +247,111 @@ function validateTripForm(formData) {
   };
 }
 
+function collectTripFormDraft(form) {
+  const formData = new FormData(form);
+  const mode = String(formData.get("mode") || "create");
+  const tripId = String(formData.get("tripId") || "");
+  const values = validateTripForm(formData).values;
+
+  return {
+    ...values,
+    id: tripId,
+    destinations: parseDestinationsFromForm(formData),
+    mode
+  };
+}
+
+function renderDestinationFields(destination, index, count, errors) {
+  const label = `Destinazione ${index + 1}`;
+  const budgetValue = destination.budgetEstimate === null || destination.budgetEstimate === undefined
+    ? ""
+    : destination.budgetEstimate;
+
+  return `
+    <article class="destination-form-card">
+      <div class="destination-form-card__header">
+        <h3>${label}</h3>
+        <div class="destination-form-card__actions">
+          <button class="button button--small button--ghost" type="button" data-action="move-destination-up" data-destination-index="${index}" ${index === 0 ? "disabled" : ""}>Su</button>
+          <button class="button button--small button--ghost" type="button" data-action="move-destination-down" data-destination-index="${index}" ${index === count - 1 ? "disabled" : ""}>Giu</button>
+          <button class="button button--small button--danger-ghost" type="button" data-action="remove-destination" data-destination-index="${index}">Rimuovi</button>
+        </div>
+      </div>
+
+      <input type="hidden" name="destinationId" value="${escapeHtml(destination.id || generateId("dest"))}">
+
+      <div class="form-field">
+        <label for="destination-name-${index}">Nome destinazione *</label>
+        <input id="destination-name-${index}" name="destinationName" type="text" value="${escapeHtml(destination.name || "")}" autocomplete="off">
+        ${fieldError(errors, `destination_${index}_name`)}
+      </div>
+
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="destination-arrival-${index}">Data arrivo</label>
+          <input id="destination-arrival-${index}" name="destinationArrivalDate" type="date" value="${escapeHtml(destination.arrivalDate || "")}">
+        </div>
+        <div class="form-field">
+          <label for="destination-departure-${index}">Data partenza</label>
+          <input id="destination-departure-${index}" name="destinationDepartureDate" type="date" value="${escapeHtml(destination.departureDate || "")}">
+          ${fieldError(errors, `destination_${index}_dates`)}
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label for="destination-hotel-${index}">Hotel / alloggio</label>
+        <input id="destination-hotel-${index}" name="destinationHotel" type="text" value="${escapeHtml(destination.hotel || "")}" autocomplete="off">
+      </div>
+
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="destination-checkin-${index}">Check-in</label>
+          <input id="destination-checkin-${index}" name="destinationHotelCheckIn" type="date" value="${escapeHtml(destination.hotelCheckIn || "")}">
+        </div>
+        <div class="form-field">
+          <label for="destination-checkout-${index}">Check-out</label>
+          <input id="destination-checkout-${index}" name="destinationHotelCheckOut" type="date" value="${escapeHtml(destination.hotelCheckOut || "")}">
+          ${fieldError(errors, `destination_${index}_hotelDates`)}
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label for="destination-budget-${index}">Budget stimato</label>
+        <input id="destination-budget-${index}" name="destinationBudgetEstimate" type="number" min="0" step="0.01" value="${escapeHtml(budgetValue)}">
+        ${fieldError(errors, `destination_${index}_budget`)}
+      </div>
+
+      <div class="form-field">
+        <label for="destination-notes-${index}">Note</label>
+        <textarea id="destination-notes-${index}" name="destinationNotes" rows="3">${escapeHtml(destination.notes || "")}</textarea>
+      </div>
+    </article>
+  `;
+}
+
+function renderDestinationsFormSection(trip, errors) {
+  const destinations = getDestinationsForForm(trip);
+
+  return `
+    <section class="destinations-form" aria-labelledby="destinations-form-title">
+      <div class="destinations-form__header">
+        <div>
+          <h2 id="destinations-form-title">Destinazioni del viaggio</h2>
+          <p>Aggiungi le fasi principali del viaggio. Solo il nome e obbligatorio.</p>
+        </div>
+        <button class="button button--ghost button--small" type="button" data-action="add-destination">+ Aggiungi destinazione</button>
+      </div>
+
+      <div class="destinations-form__list">
+        ${destinations.map((destination, index) => renderDestinationFields(destination, index, destinations.length, errors)).join("")}
+      </div>
+    </section>
+  `;
+}
+
 function renderTripForm({ trip = null, errors = {}, modeOverride = null } = {}) {
   const mode = modeOverride || (trip?.id ? "edit" : "create");
   const submitLabel = mode === "edit" ? "Salva modifiche" : "Crea viaggio";
-  const destinations = trip?.destinations?.join(", ") || "";
 
   return `
     <form class="trip-form" id="trip-form" novalidate>
@@ -134,10 +365,7 @@ function renderTripForm({ trip = null, errors = {}, modeOverride = null } = {}) 
         ${fieldError(errors, "name")}
       </div>
 
-      <div class="form-field">
-        <label for="trip-destinations">Destinazioni</label>
-        <input id="trip-destinations" name="destinations" type="text" value="${escapeHtml(destinations)}" placeholder="Singapore, Phu Quoc, Bali">
-      </div>
+      ${renderDestinationsFormSection(trip, errors)}
 
       <div class="form-grid">
         <div class="form-field">
@@ -299,6 +527,39 @@ function refreshView() {
   window.dispatchEvent(new CustomEvent("ithaca:refresh"));
 }
 
+function updateDestinationsInOpenForm(actionTarget) {
+  const form = actionTarget.closest("form");
+
+  if (!form || form.id !== "trip-form") {
+    return;
+  }
+
+  const draft = collectTripFormDraft(form);
+  const destinations = draft.destinations.length > 0 ? draft.destinations : [createBlankDestination()];
+  const index = Number(actionTarget.dataset.destinationIndex || -1);
+
+  if (actionTarget.dataset.action === "add-destination") {
+    destinations.push(createBlankDestination());
+  }
+
+  if (actionTarget.dataset.action === "remove-destination" && index >= 0) {
+    destinations.splice(index, 1);
+  }
+
+  if (actionTarget.dataset.action === "move-destination-up" && index > 0) {
+    [destinations[index - 1], destinations[index]] = [destinations[index], destinations[index - 1]];
+  }
+
+  if (actionTarget.dataset.action === "move-destination-down" && index >= 0 && index < destinations.length - 1) {
+    [destinations[index + 1], destinations[index]] = [destinations[index], destinations[index + 1]];
+  }
+
+  openTripForm({
+    ...draft,
+    destinations: destinations.length > 0 ? destinations : [createBlankDestination()]
+  }, {}, draft.mode);
+}
+
 function handleTripFormSubmit(event) {
   if (event.target.id !== "trip-form") {
     return;
@@ -341,6 +602,15 @@ function handleHomeClick(event) {
 
   if (action === "open-trip-form") {
     openTripForm();
+  }
+
+  if ([
+    "add-destination",
+    "remove-destination",
+    "move-destination-up",
+    "move-destination-down"
+  ].includes(action)) {
+    updateDestinationsInOpenForm(actionTarget);
   }
 
   if (action === "edit-trip") {
@@ -452,6 +722,7 @@ function renderTripCard(trip) {
       <a class="trip-card__main" href="#/trip/${encodeURIComponent(trip.id)}" aria-label="Apri ${escapeHtml(trip.name)}">
         <h2 class="trip-card__title">${escapeHtml(trip.name)}</h2>
         <p class="trip-card__destinations">${formatDestinations(trip.destinations)}</p>
+        ${renderDestinationMiniMeta(trip.destinations)}
         <div class="trip-card__details">
           <span>${formatDate(trip.startDate)} - ${formatDate(trip.endDate)}</span>
           <span>${duration} giorni</span>
