@@ -132,8 +132,8 @@ function renderEmptyState() {
   return `
     <article class="empty-state">
       <h2>Nessuna nota ancora</h2>
-      <p>Salva idee, promemoria e dettagli utili per ogni destinazione.</p>
-      <button class="button button--primary" type="button" data-action="open-note-form">Aggiungi prima nota</button>
+      <p>Salva idee, indirizzi, consigli e dettagli utili per ogni destinazione.</p>
+      <button class="button button--primary" type="button" data-action="open-note-form">Scrivi nota</button>
     </article>
   `;
 }

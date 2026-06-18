@@ -210,6 +210,53 @@ function renderDestinationsSection(destinations = [], currency = "EUR") {
   `;
 }
 
+function getActionHref(action, basePath) {
+  const cleanAction = String(action || "").toLowerCase();
+
+  if (cleanAction.includes("budget") || cleanAction.includes("spese")) {
+    return `${basePath}/budget`;
+  }
+
+  if (cleanAction.includes("timeline") || cleanAction.includes("tappe")) {
+    return `${basePath}/timeline`;
+  }
+
+  if (cleanAction.includes("checklist")) {
+    return `${basePath}/checklist`;
+  }
+
+  if (cleanAction.includes("note") || cleanAction.includes("nota")) {
+    return `${basePath}/notes`;
+  }
+
+  return "";
+}
+
+function renderNextActions(actions, basePath) {
+  const [primaryAction, ...secondaryActions] = actions;
+  const primaryHref = getActionHref(primaryAction, basePath);
+
+  if (!primaryAction) {
+    return "";
+  }
+
+  return `
+    <section class="panel panel--wide action-section action-section--priority" aria-labelledby="next-actions-title">
+      <p class="page__eyebrow">Cosa fare adesso</p>
+      <h2 class="panel__title" id="next-actions-title">Prossima azione</h2>
+      <div class="next-action-card">
+        <p>${escapeHtml(primaryAction)}</p>
+        ${primaryHref ? `<a class="button button--primary button--small" href="${primaryHref}">Apri sezione</a>` : ""}
+      </div>
+      ${secondaryActions.length > 0 ? `
+        <ul class="action-list action-list--secondary" aria-label="Altri passi consigliati">
+          ${secondaryActions.map((action) => `<li>${escapeHtml(action)}</li>`).join("")}
+        </ul>
+      ` : ""}
+    </section>
+  `;
+}
+
 function renderMissingTrip() {
   return `
     <section class="page" aria-labelledby="trip-missing-title">
@@ -420,12 +467,7 @@ export function renderTripDashboardView({ params }) {
         ${renderNotesWidget(notes, basePath)}
       </section>
 
-      <section class="panel panel--wide action-section" aria-labelledby="next-actions-title">
-        <h2 class="panel__title" id="next-actions-title">Prossime azioni</h2>
-        <ul class="action-list">
-          ${nextActions.map((action) => `<li>${escapeHtml(action)}</li>`).join("")}
-        </ul>
-      </section>
+      ${renderNextActions(nextActions, basePath)}
 
       <section class="panel panel--wide action-section" aria-labelledby="quick-actions-title">
         <h2 class="panel__title" id="quick-actions-title">Azioni rapide</h2>

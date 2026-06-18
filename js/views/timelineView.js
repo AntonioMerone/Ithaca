@@ -98,7 +98,7 @@ function renderEmptyState() {
     <article class="empty-state">
       <h2>Nessuna tappa ancora</h2>
       <p>Costruisci la timeline del viaggio giorno per giorno, dalle partenze alle attivita.</p>
-      <button class="button button--primary" type="button" data-action="open-timeline-form">Aggiungi prima tappa</button>
+      <button class="button button--primary" type="button" data-action="open-timeline-form">Aggiungi tappa</button>
     </article>
   `;
 }

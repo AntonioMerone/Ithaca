@@ -144,7 +144,7 @@ function renderEmptyState() {
       <p>Crea la checklist del viaggio o carica un template pre-partenza pronto da adattare.</p>
       <div class="template-actions">
         <button class="button button--primary" type="button" data-action="open-checklist-form">Aggiungi task</button>
-        <button class="button button--ghost" type="button" data-action="load-checklist-template">Carica template base</button>
+        <button class="button button--ghost" type="button" data-action="load-checklist-template">Usa template</button>
       </div>
     </article>
   `;

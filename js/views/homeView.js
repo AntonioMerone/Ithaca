@@ -262,7 +262,13 @@ function collectTripFormDraft(form) {
 }
 
 function renderDestinationFields(destination, index, count, errors) {
-  const label = `Destinazione ${index + 1}`;
+  const range = formatDestinationRange(destination.arrivalDate, destination.departureDate);
+  const destinationName = String(destination.name || "").trim();
+  const label = [
+    `Destinazione ${index + 1}`,
+    destinationName,
+    range
+  ].filter(Boolean).map(escapeHtml).join(" &middot; ");
   const budgetValue = destination.budgetEstimate === null || destination.budgetEstimate === undefined
     ? ""
     : destination.budgetEstimate;
@@ -705,9 +711,9 @@ function ensureHomeHandlers() {
 function renderEmptyState() {
   return `
     <article class="empty-state">
-      <h2>Nessun viaggio ancora</h2>
-      <p>Crea il tuo primo dossier e organizza budget, tappe, checklist e note del viaggio in un unico posto.</p>
-      <button class="button button--primary" type="button" data-action="open-trip-form">Crea viaggio</button>
+      <h2>Nessun dossier ancora</h2>
+      <p>Crea il tuo primo viaggio e organizza destinazioni, budget, timeline, checklist e note in un unico posto.</p>
+      <button class="button button--primary" type="button" data-action="open-trip-form">Crea primo viaggio</button>
     </article>
   `;
 }
@@ -732,6 +738,7 @@ function renderTripCard(trip) {
         ${notes ? `<p class="trip-card__notes">Nota: ${escapeHtml(notes)}</p>` : ""}
       </a>
       <div class="trip-card__actions" aria-label="Azioni viaggio">
+        <a class="button button--primary trip-card__open" href="#/trip/${encodeURIComponent(trip.id)}">Apri dossier</a>
         <button class="button button--small button--ghost" type="button" data-action="edit-trip" data-trip-id="${escapeHtml(trip.id)}">Modifica</button>
         <button class="button button--small button--danger-ghost" type="button" data-action="delete-trip" data-trip-id="${escapeHtml(trip.id)}">Elimina</button>
       </div>
