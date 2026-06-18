@@ -330,7 +330,8 @@ function validateExpenseForm(formData) {
 function openExpenseForm(tripId, expense = null, errors = {}, modeOverride = null) {
   openModal({
     title: modeOverride === "create" || !expense?.id ? "Aggiungi spesa" : "Modifica spesa",
-    content: renderExpenseForm({ tripId, expense, errors, modeOverride })
+    content: renderExpenseForm({ tripId, expense, errors, modeOverride }),
+    confirmOnDirty: true
   });
 }
 
@@ -522,7 +523,7 @@ export function renderBudgetView({ params }) {
           <h1 class="page__title" id="budget-title">${escapeHtml(trip.name)}</h1>
           <p class="page__summary">Budget previsto: ${formatCurrency(summary.budgetTotal, currency)}</p>
         </div>
-        <a class="button button--ghost" href="#/trip/${encodedTripId}">Torna alla dashboard</a>
+        <a class="button button--ghost dossier-back-link" href="#/trip/${encodedTripId}">&larr; Dossier</a>
       </header>
 
       <section class="budget-summary-grid" aria-label="Riepilogo budget">

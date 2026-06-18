@@ -289,7 +289,8 @@ function validateNoteForm(formData) {
 function openNoteForm(tripId, note = null, errors = {}, modeOverride = null) {
   openModal({
     title: modeOverride === "create" || !note?.id ? "Aggiungi nota" : "Modifica nota",
-    content: renderNoteForm({ tripId, note, errors, modeOverride })
+    content: renderNoteForm({ tripId, note, errors, modeOverride }),
+    confirmOnDirty: true
   });
 }
 
@@ -442,7 +443,7 @@ export function renderNotesView({ params }) {
           <h1 class="page__title" id="notes-title">${escapeHtml(trip.name)}</h1>
           <p class="page__summary">Appunti, idee e dettagli utili del viaggio.</p>
         </div>
-        <a class="button button--ghost" href="#/trip/${encodedTripId}">Torna alla dashboard</a>
+        <a class="button button--ghost dossier-back-link" href="#/trip/${encodedTripId}">&larr; Dossier</a>
       </header>
 
       ${renderSummary(notes)}

@@ -6,7 +6,7 @@ Guida rapida per pubblicare Ithaca come release privata su GitHub Pages.
 
 1. Verifica che `index.html`, `manifest.json` e `service-worker.js` usino path relativi.
 2. Verifica che `manifest.json` contenga `start_url: "./index.html#/home"` e `scope: "./"`.
-3. Verifica che la cache del service worker sia `ithaca-shell-v12-1`.
+3. Verifica che la cache del service worker sia `ithaca-shell-v13-3`.
 4. Esporta un backup JSON se nel browser locale ci sono dati importanti.
 
 ## Pubblicazione
@@ -62,7 +62,7 @@ Su iOS alcune funzioni PWA possono comportarsi diversamente rispetto ad Android.
 - Chrome DevTools -> Lighthouse: controlla PWA/installability.
 - Chrome DevTools -> Application -> Manifest: verifica nome, icone, `start_url` e `scope`.
 - Chrome DevTools -> Application -> Service Workers: verifica registrazione e stato.
-- Chrome DevTools -> Application -> Cache Storage: verifica la cache `ithaca-shell-v12-1`.
+- Chrome DevTools -> Application -> Cache Storage: verifica la cache `ithaca-shell-v13-3`.
 - Test offline: carica l'app una volta, poi prova a riaprirla senza rete.
 - Test dati: crea un viaggio, aggiorna una sezione, ricarica la pagina e verifica che i dati restino presenti.
 - Test backup: esporta, resetta, importa e controlla che i dati tornino corretti.

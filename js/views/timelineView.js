@@ -336,7 +336,8 @@ function validateTimelineForm(formData) {
 function openTimelineForm(trip, item = null, errors = {}, modeOverride = null) {
   openModal({
     title: modeOverride === "create" || !item?.id ? "Aggiungi tappa" : "Modifica tappa",
-    content: renderTimelineForm({ trip, item, errors, modeOverride })
+    content: renderTimelineForm({ trip, item, errors, modeOverride }),
+    confirmOnDirty: true
   });
 }
 
@@ -488,7 +489,7 @@ export function renderTimelineView({ params }) {
           <h1 class="page__title" id="timeline-title">${escapeHtml(trip.name)}</h1>
           <p class="page__summary">${formatDate(trip.startDate)} - ${formatDate(trip.endDate)}</p>
         </div>
-        <a class="button button--ghost" href="#/trip/${encodedTripId}">Torna alla dashboard</a>
+        <a class="button button--ghost dossier-back-link" href="#/trip/${encodedTripId}">&larr; Dossier</a>
       </header>
 
       ${renderSummary(trip, items)}

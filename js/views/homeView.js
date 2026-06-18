@@ -1,4 +1,4 @@
-import { closeModal, openModal } from "../components/modal.js";
+import { closeModal, markModalDirty, openModal } from "../components/modal.js";
 import { showToast } from "../components/toast.js";
 import {
   createBackupPayload,
@@ -65,37 +65,14 @@ function formatDestinations(destinations = []) {
   const normalized = normalizeDestinations(destinations);
 
   if (normalized.length === 0) {
-    return "Destinazioni da definire";
+    return "Itinerario da completare";
   }
 
   if (normalized.length > 3) {
-    return `${normalized.slice(0, 2).map((destination) => escapeHtml(destination.name)).join(" &rarr; ")} &rarr; +${normalized.length - 2} altre`;
+    return `${normalized.slice(0, 3).map((destination) => escapeHtml(destination.name)).join(" &rarr; ")} &rarr; +${normalized.length - 3}`;
   }
 
   return normalized.map((destination) => escapeHtml(destination.name)).join(" &rarr; ");
-}
-
-function renderDestinationMiniMeta(destinations = []) {
-  const normalized = normalizeDestinations(destinations);
-  const datedDestinations = normalized
-    .map((destination) => ({
-      ...destination,
-      range: formatDestinationRange(destination.arrivalDate, destination.departureDate)
-    }))
-    .filter((destination) => destination.range)
-    .slice(0, 2);
-
-  if (datedDestinations.length === 0) {
-    return "";
-  }
-
-  return `
-    <div class="trip-card__destination-meta">
-      ${datedDestinations.map((destination) => `
-        <span>${escapeHtml(destination.name)}: ${escapeHtml(destination.range)}</span>
-      `).join("")}
-    </div>
-  `;
 }
 
 function shortNotes(notes) {
@@ -417,7 +394,8 @@ function renderTripForm({ trip = null, errors = {}, modeOverride = null } = {}) 
 export function openTripForm(trip = null, errors = {}, modeOverride = null) {
   openModal({
     title: modeOverride === "create" || !trip?.id ? "Nuovo viaggio" : "Modifica viaggio",
-    content: renderTripForm({ trip, errors, modeOverride })
+    content: renderTripForm({ trip, errors, modeOverride }),
+    confirmOnDirty: true
   });
 }
 
@@ -539,6 +517,8 @@ function updateDestinationsInOpenForm(actionTarget) {
   if (!form || form.id !== "trip-form") {
     return;
   }
+
+  markModalDirty();
 
   const draft = collectTripFormDraft(form);
   const destinations = draft.destinations.length > 0 ? draft.destinations : [createBlankDestination()];
@@ -722,23 +702,30 @@ function renderTripCard(trip) {
   const duration = calculateTripDuration(trip.startDate, trip.endDate);
   const countdown = calculateCountdown(trip.startDate, trip.endDate);
   const notes = shortNotes(trip.notes);
+  const destinationCount = normalizeDestinations(trip.destinations).length;
 
   return `
     <article class="trip-card">
       <a class="trip-card__main" href="#/trip/${encodeURIComponent(trip.id)}" aria-label="Apri ${escapeHtml(trip.name)}">
+        <div class="trip-card__topline">
+          <span>Dossier viaggio</span>
+          <span>${escapeHtml(countdown)}</span>
+        </div>
         <h2 class="trip-card__title">${escapeHtml(trip.name)}</h2>
         <p class="trip-card__destinations">${formatDestinations(trip.destinations)}</p>
-        ${renderDestinationMiniMeta(trip.destinations)}
+        <div class="trip-card__divider" aria-hidden="true"></div>
         <div class="trip-card__details">
           <span>${formatDate(trip.startDate)} - ${formatDate(trip.endDate)}</span>
           <span>${duration} giorni</span>
-          <span>${escapeHtml(countdown)}</span>
         </div>
-        <p class="trip-card__budget">Budget previsto: ${formatCurrency(trip.budgetTotal, trip.currency)} <span>${escapeHtml(trip.currency)}</span></p>
+        <div class="trip-card__meta-row">
+          <p class="trip-card__budget">Budget ${formatCurrency(trip.budgetTotal, trip.currency)} <span>${escapeHtml(trip.currency)}</span></p>
+          <p class="trip-card__destination-count">${destinationCount} ${destinationCount === 1 ? "destinazione" : "destinazioni"}</p>
+        </div>
         ${notes ? `<p class="trip-card__notes">Nota: ${escapeHtml(notes)}</p>` : ""}
       </a>
       <div class="trip-card__actions" aria-label="Azioni viaggio">
-        <a class="button button--primary trip-card__open" href="#/trip/${encodeURIComponent(trip.id)}">Apri dossier</a>
+        <a class="button button--primary trip-card__open" href="#/trip/${encodeURIComponent(trip.id)}">Apri dossier &rarr;</a>
         <button class="button button--small button--ghost" type="button" data-action="edit-trip" data-trip-id="${escapeHtml(trip.id)}">Modifica</button>
         <button class="button button--small button--danger-ghost" type="button" data-action="delete-trip" data-trip-id="${escapeHtml(trip.id)}">Elimina</button>
       </div>

@@ -325,7 +325,8 @@ function validateChecklistForm(formData) {
 function openChecklistForm(tripId, item = null, errors = {}, modeOverride = null) {
   openModal({
     title: modeOverride === "create" || !item?.id ? "Aggiungi task" : "Modifica task",
-    content: renderChecklistForm({ tripId, item, errors, modeOverride })
+    content: renderChecklistForm({ tripId, item, errors, modeOverride }),
+    confirmOnDirty: true
   });
 }
 
@@ -540,7 +541,7 @@ export function renderChecklistView({ params }) {
           <h1 class="page__title" id="checklist-title">${escapeHtml(trip.name)}</h1>
           <p class="page__summary">Preparazione, controlli durante il viaggio e chiusura al rientro.</p>
         </div>
-        <a class="button button--ghost" href="#/trip/${encodedTripId}">Torna alla dashboard</a>
+        <a class="button button--ghost dossier-back-link" href="#/trip/${encodedTripId}">&larr; Dossier</a>
       </header>
 
       ${renderSummary(items)}
