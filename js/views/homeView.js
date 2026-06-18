@@ -414,7 +414,7 @@ function renderTripForm({ trip = null, errors = {}, modeOverride = null } = {}) 
   `;
 }
 
-function openTripForm(trip = null, errors = {}, modeOverride = null) {
+export function openTripForm(trip = null, errors = {}, modeOverride = null) {
   openModal({
     title: modeOverride === "create" || !trip?.id ? "Nuovo viaggio" : "Modifica viaggio",
     content: renderTripForm({ trip, errors, modeOverride })

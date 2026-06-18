@@ -1,4 +1,5 @@
 import { getChecklistItemsByTripId, getExpensesByTripId, getNotesByTripId, getTimelineItemsByTripId, getTripById } from "../storage.js";
+import { openTripForm } from "./homeView.js";
 import {
   calculateBudgetSummary,
   calculateChecklistSummary,
@@ -20,6 +21,31 @@ import {
   normalizeDestinations,
   sortTimelineItems
 } from "../utils.js";
+
+let dashboardHandlersReady = false;
+
+function handleDashboardClick(event) {
+  const actionTarget = event.target.closest("[data-action]");
+
+  if (!actionTarget || actionTarget.dataset.action !== "edit-dashboard-trip") {
+    return;
+  }
+
+  const trip = getTripById(actionTarget.dataset.tripId);
+
+  if (trip) {
+    openTripForm(trip);
+  }
+}
+
+function ensureDashboardHandlers() {
+  if (dashboardHandlersReady) {
+    return;
+  }
+
+  document.addEventListener("click", handleDashboardClick);
+  dashboardHandlersReady = true;
+}
 
 function formatDestinations(destinations = []) {
   const normalized = normalizeDestinations(destinations);
@@ -390,6 +416,7 @@ function renderNotesWidget(notes, basePath) {
 }
 
 export function renderTripDashboardView({ params }) {
+  ensureDashboardHandlers();
   const trip = getTripById(params.tripId);
 
   if (!trip) {
@@ -476,7 +503,7 @@ export function renderTripDashboardView({ params }) {
           <a class="button button--ghost" href="${basePath}/budget">Apri budget</a>
           <a class="button button--ghost" href="${basePath}/checklist">Apri checklist</a>
           <a class="button button--ghost" href="${basePath}/notes">Apri note</a>
-          <a class="button button--primary" href="#/home">Modifica viaggio</a>
+          <button class="button button--primary" type="button" data-action="edit-dashboard-trip" data-trip-id="${escapeHtml(trip.id)}">Modifica viaggio</button>
         </div>
       </section>
     </section>
