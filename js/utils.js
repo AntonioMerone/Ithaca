@@ -36,6 +36,14 @@ export const CHECKLIST_SECTIONS = [
   "after_trip"
 ];
 
+export const DOSSIER_PAYMENT_STATUSES = ["unpaid", "partial", "paid"];
+
+export const FLIGHT_TYPES = ["andata", "ritorno", "interno", "scalo", "altro"];
+
+export const STAY_TYPES = ["hotel", "appartamento", "bnb", "ostello", "resort", "altro"];
+
+export const ACTIVITY_TYPES = ["escursione", "visita", "ristorante", "trasporto", "altro"];
+
 function parseDate(value) {
   if (!value) {
     return null;
@@ -260,6 +268,38 @@ export function calculateBudgetSummary(trip, expenses = []) {
   };
 }
 
+function getDossierItemCost(item) {
+  const amount = Number(item?.cost || 0);
+  return Number.isFinite(amount) && amount > 0 ? amount : 0;
+}
+
+export function calculateDossierBudgetSummary(trip, expenses = [], flights = [], stays = [], activities = []) {
+  const manualSummary = calculateBudgetSummary(trip, expenses);
+  const dossierItems = [...flights, ...stays, ...activities];
+  const dossierPaidTotal = dossierItems.reduce((total, item) => {
+    return total + (item.paymentStatus === "paid" ? getDossierItemCost(item) : 0);
+  }, 0);
+  const dossierUnpaidTotal = dossierItems.reduce((total, item) => {
+    return total + (item.paymentStatus !== "paid" ? getDossierItemCost(item) : 0);
+  }, 0);
+  const paidTotal = manualSummary.paidTotal + dossierPaidTotal;
+  const unpaidTotal = manualSummary.unpaidTotal + dossierUnpaidTotal;
+  const plannedTotal = paidTotal + unpaidTotal;
+  const difference = manualSummary.budgetTotal - plannedTotal;
+
+  return {
+    budgetTotal: manualSummary.budgetTotal,
+    paidTotal,
+    unpaidTotal,
+    plannedTotal,
+    remaining: difference,
+    difference,
+    isOverBudget: plannedTotal > manualSummary.budgetTotal,
+    manualPlannedTotal: manualSummary.plannedTotal,
+    dossierPlannedTotal: dossierPaidTotal + dossierUnpaidTotal
+  };
+}
+
 export function groupExpensesByCategory(expenses = []) {
   return expenses.reduce((groups, expense) => {
     const category = EXPENSE_CATEGORIES.includes(expense.category) ? expense.category : "other";
@@ -329,6 +369,65 @@ export function getTimelinePaymentStatusLabel(status) {
   };
 
   return labels[status] || labels.none;
+}
+
+export function getDossierPaymentStatusLabel(status) {
+  const labels = {
+    unpaid: "Non pagato",
+    partial: "Parziale",
+    paid: "Pagato"
+  };
+
+  return labels[status] || labels.unpaid;
+}
+
+export function getDossierPaymentStatusBadge(status) {
+  if (status === "paid") {
+    return "badge--success";
+  }
+
+  if (status === "partial") {
+    return "badge--warning";
+  }
+
+  return "";
+}
+
+export function getFlightTypeLabel(type) {
+  const labels = {
+    andata: "Andata",
+    ritorno: "Ritorno",
+    interno: "Interno",
+    scalo: "Scalo",
+    altro: "Altro"
+  };
+
+  return labels[type] || labels.altro;
+}
+
+export function getStayTypeLabel(type) {
+  const labels = {
+    hotel: "Hotel",
+    appartamento: "Appartamento",
+    bnb: "B&B",
+    ostello: "Ostello",
+    resort: "Resort",
+    altro: "Altro"
+  };
+
+  return labels[type] || labels.altro;
+}
+
+export function getActivityTypeLabel(type) {
+  const labels = {
+    escursione: "Escursione",
+    visita: "Visita",
+    ristorante: "Ristorante",
+    trasporto: "Trasporto",
+    altro: "Altro"
+  };
+
+  return labels[type] || labels.altro;
 }
 
 export function getChecklistSectionLabel(section) {

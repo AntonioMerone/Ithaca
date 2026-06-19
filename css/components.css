@@ -677,39 +677,132 @@
     var(--color-accent-soft);
 }
 
-.next-action-card {
-  display: grid;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border: 1px solid rgb(193 68 14 / 24%);
-  border-left: 0.3rem solid var(--color-accent);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-}
-
-.next-action-card__label {
-  color: var(--color-accent);
-  font-size: 0.72rem;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.next-action-card p {
-  color: var(--color-primary);
-  font-size: 1.08rem;
-  font-weight: 900;
-  line-height: 1.35;
-}
-
-.next-action-card__description {
-  color: var(--color-text-muted);
-  line-height: 1.5;
-}
-
 .dossier-back-link {
   justify-self: start;
   min-width: 7.5rem;
+}
+
+.dossier-sections {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.dossier-section {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, var(--color-surface), rgb(237 232 220 / 34%));
+  box-shadow: 0 0.75rem 1.8rem var(--color-shadow);
+}
+
+.dossier-section__header {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.dossier-list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.dossier-card {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.dossier-card__header {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.dossier-card__eyebrow {
+  color: var(--color-accent);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dossier-card__title {
+  color: var(--color-primary);
+  font-size: 1.02rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.dossier-card__meta,
+.dossier-card__notes {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.dossier-card__notes {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+  line-height: 1.5;
+}
+
+.dossier-card__payment {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.dossier-card__payment strong {
+  color: var(--color-primary);
+  white-space: nowrap;
+}
+
+.dossier-empty {
+  padding: var(--space-3);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  font-weight: 700;
+}
+
+.dossier-recap {
+  gap: var(--space-3);
+}
+
+.dossier-recap__list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.dossier-recap__item {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.dossier-recap__item span {
+  color: var(--color-accent);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.dossier-recap__item strong {
+  color: var(--color-primary);
+  overflow-wrap: anywhere;
+}
+
+.dossier-recap__item p {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
 }
 
 .action-list {
@@ -1686,6 +1779,7 @@
   .trip-card__actions,
   .home-actions,
   .template-actions,
+  .dossier-section__header,
   .destination-form-card__actions,
   .form-actions,
   .quick-actions,
@@ -1697,6 +1791,7 @@
   .trip-card__actions .trip-card__open,
   .home-actions .button,
   .template-actions .button,
+  .dossier-section__header .button,
   .destination-form-card__actions .button,
   .form-actions .button,
   .quick-actions .button,
@@ -1736,6 +1831,16 @@
   }
 
   .dashboard-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dossier-section__header,
+  .dossier-card__header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+
+  .dossier-recap__list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -1806,6 +1911,10 @@
 
 @media (min-width: 920px) {
   .dashboard-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .dossier-sections {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }

@@ -103,58 +103,46 @@ function fieldError(errors, field) {
   return errors[field] ? `<p class="field-error">${escapeHtml(errors[field])}</p>` : "";
 }
 
-function parseDestinationBudget(value) {
-  const cleanValue = String(value ?? "").trim();
-
-  if (!cleanValue) {
-    return null;
-  }
-
-  const amount = Number(cleanValue);
-  return Number.isFinite(amount) ? amount : Number.NaN;
+function getExistingDestinationsById(trip) {
+  return new Map(
+    normalizeDestinations(trip?.destinations || [], trip)
+      .map((destination) => [destination.id, destination])
+  );
 }
 
-function parseDestinationsFromForm(formData) {
+function parseDestinationsFromForm(formData, trip = null) {
   const ids = formData.getAll("destinationId");
   const names = formData.getAll("destinationName");
   const arrivalDates = formData.getAll("destinationArrivalDate");
   const departureDates = formData.getAll("destinationDepartureDate");
-  const hotels = formData.getAll("destinationHotel");
-  const hotelCheckIns = formData.getAll("destinationHotelCheckIn");
-  const hotelCheckOuts = formData.getAll("destinationHotelCheckOut");
-  const budgetEstimates = formData.getAll("destinationBudgetEstimate");
-  const notes = formData.getAll("destinationNotes");
+  const existingDestinations = getExistingDestinationsById(trip);
 
-  return ids.map((id, index) => ({
-    id: String(id || generateId("dest")),
-    name: String(names[index] || "").trim(),
-    arrivalDate: String(arrivalDates[index] || "").trim(),
-    departureDate: String(departureDates[index] || "").trim(),
-    hotel: String(hotels[index] || "").trim(),
-    hotelCheckIn: String(hotelCheckIns[index] || "").trim(),
-    hotelCheckOut: String(hotelCheckOuts[index] || "").trim(),
-    budgetEstimate: parseDestinationBudget(budgetEstimates[index]),
-    notes: String(notes[index] || "").trim()
-  }));
+  return ids.map((id, index) => {
+    const destinationId = String(id || generateId("dest"));
+    const existingDestination = existingDestinations.get(destinationId) || createBlankDestination();
+
+    return {
+      ...existingDestination,
+      id: destinationId,
+      name: String(names[index] || "").trim(),
+      arrivalDate: String(arrivalDates[index] || "").trim(),
+      departureDate: String(departureDates[index] || "").trim()
+    };
+  });
 }
 
 function destinationHasAnyValue(destination) {
   return [
     destination.name,
     destination.arrivalDate,
-    destination.departureDate,
-    destination.hotel,
-    destination.hotelCheckIn,
-    destination.hotelCheckOut,
-    destination.budgetEstimate === null ? "" : destination.budgetEstimate,
-    destination.notes
+    destination.departureDate
   ].some((value) => String(value ?? "").trim());
 }
 
-function validateTripForm(formData) {
+function validateTripForm(formData, trip = null) {
   const errors = {};
   const name = String(formData.get("name") || "").trim();
-  const destinationDrafts = parseDestinationsFromForm(formData);
+  const destinationDrafts = parseDestinationsFromForm(formData, trip);
   const destinations = destinationDrafts.filter(destinationHasAnyValue);
   const startDate = String(formData.get("startDate") || "").trim();
   const endDate = String(formData.get("endDate") || "").trim();
@@ -197,24 +185,13 @@ function validateTripForm(formData) {
     if (destination.arrivalDate && destination.departureDate && destination.departureDate < destination.arrivalDate) {
       errors[`destination_${index}_dates`] = `La partenza della destinazione ${index + 1} non puo precedere l'arrivo.`;
     }
-
-    if (destination.hotelCheckIn && destination.hotelCheckOut && destination.hotelCheckOut < destination.hotelCheckIn) {
-      errors[`destination_${index}_hotelDates`] = `Il check-out della destinazione ${index + 1} non puo precedere il check-in.`;
-    }
-
-    if (Number.isNaN(destination.budgetEstimate) || destination.budgetEstimate < 0) {
-      errors[`destination_${index}_budget`] = `Il budget della destinazione ${index + 1} deve essere maggiore o uguale a 0.`;
-    }
   });
 
   return {
     errors,
     values: {
       name,
-      destinations: destinations.map((destination) => ({
-        ...destination,
-        budgetEstimate: Number.isNaN(destination.budgetEstimate) ? null : destination.budgetEstimate
-      })),
+      destinations,
       startDate,
       endDate,
       budgetTotal,
@@ -228,12 +205,13 @@ function collectTripFormDraft(form) {
   const formData = new FormData(form);
   const mode = String(formData.get("mode") || "create");
   const tripId = String(formData.get("tripId") || "");
-  const values = validateTripForm(formData).values;
+  const currentTrip = mode === "edit" ? getTripById(tripId) : null;
+  const values = validateTripForm(formData, currentTrip).values;
 
   return {
     ...values,
     id: tripId,
-    destinations: parseDestinationsFromForm(formData),
+    destinations: parseDestinationsFromForm(formData, currentTrip),
     mode
   };
 }
@@ -246,9 +224,6 @@ function renderDestinationFields(destination, index, count, errors) {
     destinationName,
     range
   ].filter(Boolean).map(escapeHtml).join(" &middot; ");
-  const budgetValue = destination.budgetEstimate === null || destination.budgetEstimate === undefined
-    ? ""
-    : destination.budgetEstimate;
 
   return `
     <article class="destination-form-card">
@@ -279,34 +254,6 @@ function renderDestinationFields(destination, index, count, errors) {
           <input id="destination-departure-${index}" name="destinationDepartureDate" type="date" value="${escapeHtml(destination.departureDate || "")}">
           ${fieldError(errors, `destination_${index}_dates`)}
         </div>
-      </div>
-
-      <div class="form-field">
-        <label for="destination-hotel-${index}">Hotel / alloggio</label>
-        <input id="destination-hotel-${index}" name="destinationHotel" type="text" value="${escapeHtml(destination.hotel || "")}" autocomplete="off">
-      </div>
-
-      <div class="form-grid">
-        <div class="form-field">
-          <label for="destination-checkin-${index}">Check-in</label>
-          <input id="destination-checkin-${index}" name="destinationHotelCheckIn" type="date" value="${escapeHtml(destination.hotelCheckIn || "")}">
-        </div>
-        <div class="form-field">
-          <label for="destination-checkout-${index}">Check-out</label>
-          <input id="destination-checkout-${index}" name="destinationHotelCheckOut" type="date" value="${escapeHtml(destination.hotelCheckOut || "")}">
-          ${fieldError(errors, `destination_${index}_hotelDates`)}
-        </div>
-      </div>
-
-      <div class="form-field">
-        <label for="destination-budget-${index}">Budget stimato</label>
-        <input id="destination-budget-${index}" name="destinationBudgetEstimate" type="number" min="0" step="0.01" value="${escapeHtml(budgetValue)}">
-        ${fieldError(errors, `destination_${index}_budget`)}
-      </div>
-
-      <div class="form-field">
-        <label for="destination-notes-${index}">Note</label>
-        <textarea id="destination-notes-${index}" name="destinationNotes" rows="3">${escapeHtml(destination.notes || "")}</textarea>
       </div>
     </article>
   `;
@@ -428,9 +375,9 @@ function downloadBackupJson() {
     link.click();
     link.remove();
     window.setTimeout(() => URL.revokeObjectURL(url), 0);
-    showToast("Backup JSON esportato.");
+    showToast("Copia salvata.");
   } catch {
-    showToast("Export non riuscito. Riprova.");
+    showToast("Salvataggio copia non riuscito. Riprova.");
   }
 }
 
@@ -438,12 +385,12 @@ function renderDataManagementContent(error = "") {
   return `
     <div class="data-management">
       ${error ? `<div class="form-errors" role="alert"><p>${escapeHtml(error)}</p></div>` : ""}
-      <p class="panel__body">Esporta, importa o resetta i dati locali salvati in Ithaca.</p>
+      <p class="panel__body">Salva una copia di sicurezza, ripristina una copia precedente o cancella i dati locali di Ithaca.</p>
 
       <div class="data-management__actions">
-        <button class="button button--primary" type="button" data-action="export-backup">Esporta backup JSON</button>
-        <button class="button button--ghost" type="button" data-action="choose-import-file">Importa backup JSON</button>
-        <button class="button button--danger-ghost" type="button" data-action="open-reset-confirmation">Reset dati app</button>
+        <button class="button button--primary" type="button" data-action="export-backup">Salva una copia</button>
+        <button class="button button--ghost" type="button" data-action="choose-import-file">Ripristina una copia</button>
+        <button class="button button--danger-ghost" type="button" data-action="open-reset-confirmation">Cancella dati</button>
       </div>
 
       <input class="visually-hidden" id="backup-file-input" type="file" accept="application/json,.json" data-action="import-backup-file">
@@ -460,7 +407,7 @@ function openDataManagementModal(error = "") {
 
 function openImportConfirmation() {
   openModal({
-    title: "Importa backup JSON",
+    title: "Ripristina una copia",
     content: `
       <div class="confirm-dialog">
         <p>L'import sostituira i dati attuali di Ithaca. Vuoi continuare?</p>
@@ -475,13 +422,13 @@ function openImportConfirmation() {
 
 function openResetConfirmation() {
   openModal({
-    title: "Reset dati app",
+    title: "Cancella dati",
     content: `
       <div class="confirm-dialog">
         <p>Questa azione cancellera tutti i viaggi e i dati salvati in Ithaca. Continuare?</p>
         <div class="form-actions">
           <button class="button button--ghost" type="button" data-action="open-data-management">Annulla</button>
-          <button class="button button--danger" type="button" data-action="confirm-reset-data">Reset dati app</button>
+          <button class="button button--danger" type="button" data-action="confirm-reset-data">Cancella dati</button>
         </div>
       </div>
     `
@@ -555,9 +502,10 @@ function handleTripFormSubmit(event) {
 
   const form = event.target;
   const formData = new FormData(form);
-  const { errors, values } = validateTripForm(formData);
   const mode = String(formData.get("mode") || "create");
   const tripId = String(formData.get("tripId") || "");
+  const currentTrip = mode === "edit" ? getTripById(tripId) : null;
+  const { errors, values } = validateTripForm(formData, currentTrip);
 
   if (Object.keys(errors).length > 0) {
     openTripForm(mode === "edit" ? { ...getTripById(tripId), ...values } : values, errors, mode);
@@ -642,7 +590,7 @@ function handleHomeClick(event) {
       closeModal();
       window.location.hash = "#/home";
       refreshView();
-      showToast("Backup importato.");
+      showToast("Copia ripristinata.");
     } catch (error) {
       pendingImportText = "";
       openDataManagementModal(error.message || "Backup non valido.");
@@ -658,7 +606,7 @@ function handleHomeClick(event) {
     closeModal();
     window.location.hash = "#/home";
     refreshView();
-    showToast("Dati app resettati.");
+    showToast("Dati cancellati.");
   }
 
   if (action === "close-modal") {
