@@ -16,7 +16,7 @@ export const EXPENSE_CATEGORIES = [
   "other"
 ];
 
-export const EXPENSE_STATUSES = ["paid", "unpaid"];
+export const EXPENSE_STATUSES = ["unpaid", "partial", "paid"];
 
 export const TIMELINE_TYPES = [
   "flight",
@@ -248,12 +248,8 @@ export function getNextDestination(destinations = [], today = null) {
 
 export function calculateBudgetSummary(trip, expenses = []) {
   const budgetTotal = Number(trip?.budgetTotal || 0);
-  const paidTotal = expenses.reduce((total, expense) => {
-    return total + (expense.status === "paid" ? Number(expense.amount || 0) : 0);
-  }, 0);
-  const unpaidTotal = expenses.reduce((total, expense) => {
-    return total + (expense.status === "unpaid" ? Number(expense.amount || 0) : 0);
-  }, 0);
+  const paidTotal = expenses.reduce((total, expense) => total + getPaymentBreakdown(expense, "amount", "status").paidAmount, 0);
+  const unpaidTotal = expenses.reduce((total, expense) => total + getPaymentBreakdown(expense, "amount", "status").dueAmount, 0);
   const plannedTotal = paidTotal + unpaidTotal;
   const difference = budgetTotal - plannedTotal;
 
@@ -273,29 +269,63 @@ function getDossierItemCost(item) {
   return Number.isFinite(amount) && amount > 0 ? amount : 0;
 }
 
-export function calculateDossierBudgetSummary(trip, expenses = [], flights = [], stays = [], activities = []) {
-  const manualSummary = calculateBudgetSummary(trip, expenses);
-  const dossierItems = [...flights, ...stays, ...activities];
-  const dossierPaidTotal = dossierItems.reduce((total, item) => {
-    return total + (item.paymentStatus === "paid" ? getDossierItemCost(item) : 0);
-  }, 0);
-  const dossierUnpaidTotal = dossierItems.reduce((total, item) => {
-    return total + (item.paymentStatus !== "paid" ? getDossierItemCost(item) : 0);
-  }, 0);
-  const paidTotal = manualSummary.paidTotal + dossierPaidTotal;
-  const unpaidTotal = manualSummary.unpaidTotal + dossierUnpaidTotal;
-  const plannedTotal = paidTotal + unpaidTotal;
-  const difference = manualSummary.budgetTotal - plannedTotal;
+function normalizeLedgerAmount(value) {
+  const amount = Number(value || 0);
+  return Number.isFinite(amount) && amount > 0 ? amount : 0;
+}
+
+export function getPaymentBreakdown(item, amountField = "cost", statusField = "paymentStatus") {
+  const totalAmount = normalizeLedgerAmount(item?.[amountField]);
+  const status = DOSSIER_PAYMENT_STATUSES.includes(item?.[statusField]) ? item[statusField] : "unpaid";
+  const rawPaidAmount = normalizeLedgerAmount(item?.paidAmount);
+
+  if (status === "paid") {
+    return {
+      totalAmount,
+      paidAmount: totalAmount,
+      dueAmount: 0,
+      status
+    };
+  }
+
+  if (status === "partial") {
+    const paidAmount = Math.min(rawPaidAmount, totalAmount);
+
+    return {
+      totalAmount,
+      paidAmount,
+      dueAmount: Math.max(totalAmount - paidAmount, 0),
+      status
+    };
+  }
 
   return {
-    budgetTotal: manualSummary.budgetTotal,
+    totalAmount,
+    paidAmount: 0,
+    dueAmount: totalAmount,
+    status
+  };
+}
+
+export function calculateDossierBudgetSummary(trip, expenses = [], flights = [], stays = [], activities = []) {
+  const budgetTotal = Number(trip?.budgetTotal || 0);
+  const manualPaidTotal = expenses.reduce((total, expense) => total + getPaymentBreakdown(expense, "amount", "status").paidAmount, 0);
+  const manualUnpaidTotal = expenses.reduce((total, expense) => total + getPaymentBreakdown(expense, "amount", "status").dueAmount, 0);
+  const dossierItems = [...flights, ...stays, ...activities];
+  const dossierPaidTotal = dossierItems.reduce((total, item) => total + getPaymentBreakdown(item).paidAmount, 0);
+  const dossierUnpaidTotal = dossierItems.reduce((total, item) => total + getPaymentBreakdown(item).dueAmount, 0);
+  const paidTotal = manualPaidTotal + dossierPaidTotal;
+  const unpaidTotal = manualUnpaidTotal + dossierUnpaidTotal;
+  const plannedTotal = paidTotal + unpaidTotal;
+
+  return {
+    budgetTotal,
     paidTotal,
     unpaidTotal,
     plannedTotal,
-    remaining: difference,
-    difference,
-    isOverBudget: plannedTotal > manualSummary.budgetTotal,
-    manualPlannedTotal: manualSummary.plannedTotal,
+    totalTrip: plannedTotal,
+    dueTotal: unpaidTotal,
+    manualPlannedTotal: manualPaidTotal + manualUnpaidTotal,
     dossierPlannedTotal: dossierPaidTotal + dossierUnpaidTotal
   };
 }
@@ -327,6 +357,7 @@ export function getExpenseCategoryLabel(category) {
 export function getExpenseStatusLabel(status) {
   const labels = {
     paid: "Pagato",
+    partial: "Parziale",
     unpaid: "Da pagare"
   };
 
@@ -390,7 +421,7 @@ export function getDossierPaymentStatusBadge(status) {
     return "badge--warning";
   }
 
-  return "";
+  return "badge--danger";
 }
 
 export function getFlightTypeLabel(type) {

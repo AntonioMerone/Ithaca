@@ -47,6 +47,7 @@ import {
   getNoteDestinations,
   getNotePreview,
   getOpenChecklistItems,
+  getPaymentBreakdown,
   getStayTypeLabel,
   isChecklistItemOverdue,
   normalizeDestinations,
@@ -461,11 +462,13 @@ function renderDossierPayment(item, currency) {
   const hasCost = Number(item.cost || 0) > 0;
   const status = getDossierPaymentStatusLabel(item.paymentStatus);
   const badgeClass = getDossierPaymentStatusBadge(item.paymentStatus);
+  const breakdown = getPaymentBreakdown(item);
 
   return `
     <p class="dossier-card__payment">
       <span class="badge ${badgeClass}">${escapeHtml(status)}</span>
       ${hasCost ? `<strong>${formatCurrency(item.cost, currency)}</strong>` : ""}
+      ${item.paymentStatus === "partial" ? `<span>Pagato ${formatCurrency(breakdown.paidAmount, currency)} · Da pagare ${formatCurrency(breakdown.dueAmount, currency)}</span>` : ""}
     </p>
   `;
 }
@@ -476,12 +479,16 @@ function getDestinationName(destinations, destinationId) {
 
 function renderFlightCard(flight, currency) {
   const route = [flight.from, flight.to].filter(Boolean).map(escapeHtml).join(" &rarr; ") || "Tratta da completare";
+  const flightIdentity = [
+    flight.airline,
+    flight.flightNumber
+  ].filter(Boolean).join(" · ");
   const dateLine = [
     flight.departureDate ? `${formatDate(flight.departureDate)}${flight.departureTime ? ` ${escapeHtml(flight.departureTime)}` : ""}` : "",
     flight.arrivalDate ? `${formatDate(flight.arrivalDate)}${flight.arrivalTime ? ` ${escapeHtml(flight.arrivalTime)}` : ""}` : ""
   ].filter(Boolean).join(" &rarr; ");
   const referenceParts = [
-    flight.flightNumber ? `Volo ${flight.flightNumber}` : "",
+    flightIdentity,
     flight.bookingNumber ? `Prenotazione ${flight.bookingNumber}` : "",
     flight.baggage ? `Bagaglio: ${flight.baggage}` : ""
   ].filter(Boolean);
@@ -511,8 +518,8 @@ function renderStayCard(stay, trip) {
   const title = stay.structureName || "Soggiorno da completare";
   const range = [stay.checkInDate ? formatDate(stay.checkInDate) : "", stay.checkOutDate ? formatDate(stay.checkOutDate) : ""].filter(Boolean).join(" &rarr; ");
   const referenceParts = [
-    destinationName,
-    getStayTypeLabel(stay.structureType),
+    destinationName ? `Destinazione: ${destinationName}` : "",
+    `Tipo: ${getStayTypeLabel(stay.structureType)}`,
     stay.bookingNumber ? `Prenotazione ${stay.bookingNumber}` : ""
   ].filter(Boolean);
 
@@ -571,7 +578,7 @@ function renderActivityCard(activity, trip) {
   `;
 }
 
-function renderDossierSection({ title, summary, tripId, action, emptyText, itemsHtml }) {
+function renderDossierSection({ title, summary, tripId, action, emptyText, emptyDescription = "", itemsHtml }) {
   return `
     <section class="dossier-section" aria-labelledby="${action}-title">
       <header class="dossier-section__header">
@@ -581,7 +588,12 @@ function renderDossierSection({ title, summary, tripId, action, emptyText, items
         </div>
         <button class="button button--primary button--small" type="button" data-action="${action}" data-trip-id="${escapeHtml(tripId)}">Aggiungi</button>
       </header>
-      ${itemsHtml ? `<div class="dossier-list">${itemsHtml}</div>` : `<article class="dossier-empty">${escapeHtml(emptyText)}</article>`}
+      ${itemsHtml ? `<div class="dossier-list">${itemsHtml}</div>` : `
+        <article class="dossier-empty">
+          <p>${escapeHtml(emptyText)}</p>
+          ${emptyDescription ? `<p>${escapeHtml(emptyDescription)}</p>` : ""}
+        </article>
+      `}
     </section>
   `;
 }
@@ -615,6 +627,7 @@ function renderDossierSections(trip, flights, stays, activities) {
         tripId: trip.id,
         action: "open-activity-form",
         emptyText: "Nessuna attivita inserita.",
+        emptyDescription: "Aggiungi escursioni, visite, ristoranti prenotati o attivita con data e costo.",
         itemsHtml: sortedActivities.map((activity) => renderActivityCard(activity, trip)).join("")
       })}
     </section>
@@ -778,9 +791,14 @@ function renderFlightForm({ trip, flight = null, errors = {}, modeOverride = nul
           <select id="flight-type-input" name="type">${renderOptions(FLIGHT_TYPES, flight?.type || "altro", getFlightTypeLabel)}</select>
         </div>
         <div class="form-field">
-          <label for="flight-number-input">Numero volo</label>
-          <input id="flight-number-input" name="flightNumber" type="text" value="${escapeHtml(flight?.flightNumber || "")}" autocomplete="off">
+          <label for="flight-airline-input">Compagnia aerea</label>
+          <input id="flight-airline-input" name="airline" type="text" value="${escapeHtml(flight?.airline || "")}" autocomplete="off">
         </div>
+      </div>
+
+      <div class="form-field">
+        <label for="flight-number-input">Numero volo</label>
+        <input id="flight-number-input" name="flightNumber" type="text" value="${escapeHtml(flight?.flightNumber || "")}" autocomplete="off">
       </div>
 
       <div class="form-grid">
@@ -839,6 +857,12 @@ function renderFlightForm({ trip, flight = null, errors = {}, modeOverride = nul
       </div>
 
       <div class="form-field">
+        <label for="flight-paid-amount-input">Importo pagato, se parziale</label>
+        <input id="flight-paid-amount-input" name="paidAmount" type="number" min="0" step="0.01" value="${escapeHtml(flight?.paidAmount || "")}">
+        ${fieldError(errors, "paidAmount")}
+      </div>
+
+      <div class="form-field">
         <label for="flight-notes-input">Note</label>
         <textarea id="flight-notes-input" name="notes" rows="4">${escapeHtml(flight?.notes || "")}</textarea>
       </div>
@@ -853,16 +877,22 @@ function renderFlightForm({ trip, flight = null, errors = {}, modeOverride = nul
 
 function validateFlightForm(formData) {
   const cost = parseOptionalCost(formData.get("cost"));
+  const paidAmount = parseOptionalCost(formData.get("paidAmount"));
   const errors = {};
 
   if (Number.isNaN(cost) || cost < 0) {
     errors.cost = "Costo deve essere un numero maggiore o uguale a 0.";
   }
 
+  if (Number.isNaN(paidAmount) || paidAmount < 0) {
+    errors.paidAmount = "Importo pagato deve essere un numero maggiore o uguale a 0.";
+  }
+
   return {
     errors,
     values: {
       type: FLIGHT_TYPES.includes(formData.get("type")) ? formData.get("type") : "altro",
+      airline: String(formData.get("airline") || "").trim(),
       from: String(formData.get("from") || "").trim(),
       to: String(formData.get("to") || "").trim(),
       departureDate: String(formData.get("departureDate") || "").trim(),
@@ -874,6 +904,7 @@ function validateFlightForm(formData) {
       baggage: String(formData.get("baggage") || "").trim(),
       cost: Number.isNaN(cost) ? 0 : cost,
       paymentStatus: DOSSIER_PAYMENT_STATUSES.includes(formData.get("paymentStatus")) ? formData.get("paymentStatus") : "unpaid",
+      paidAmount: Number.isNaN(paidAmount) ? 0 : Math.min(paidAmount, Number.isNaN(cost) ? 0 : cost),
       notes: String(formData.get("notes") || "").trim()
     }
   };
@@ -993,6 +1024,12 @@ function renderStayForm({ trip, stay = null, errors = {}, modeOverride = null } 
       </div>
 
       <div class="form-field">
+        <label for="stay-paid-amount-input">Importo pagato, se parziale</label>
+        <input id="stay-paid-amount-input" name="paidAmount" type="number" min="0" step="0.01" value="${escapeHtml(stay?.paidAmount || "")}">
+        ${fieldError(errors, "paidAmount")}
+      </div>
+
+      <div class="form-field">
         <label for="stay-meals-input">Pasti / note cibo</label>
         <input id="stay-meals-input" name="mealsNotes" type="text" value="${escapeHtml(stay?.mealsNotes || "")}" autocomplete="off">
       </div>
@@ -1012,12 +1049,17 @@ function renderStayForm({ trip, stay = null, errors = {}, modeOverride = null } 
 
 function validateStayForm(formData) {
   const cost = parseOptionalCost(formData.get("cost"));
+  const paidAmount = parseOptionalCost(formData.get("paidAmount"));
   const errors = {};
   const checkInDate = String(formData.get("checkInDate") || "").trim();
   const checkOutDate = String(formData.get("checkOutDate") || "").trim();
 
   if (Number.isNaN(cost) || cost < 0) {
     errors.cost = "Costo deve essere un numero maggiore o uguale a 0.";
+  }
+
+  if (Number.isNaN(paidAmount) || paidAmount < 0) {
+    errors.paidAmount = "Importo pagato deve essere un numero maggiore o uguale a 0.";
   }
 
   if (checkInDate && checkOutDate && checkOutDate < checkInDate) {
@@ -1035,6 +1077,7 @@ function validateStayForm(formData) {
       bookingNumber: String(formData.get("bookingNumber") || "").trim(),
       cost: Number.isNaN(cost) ? 0 : cost,
       paymentStatus: DOSSIER_PAYMENT_STATUSES.includes(formData.get("paymentStatus")) ? formData.get("paymentStatus") : "unpaid",
+      paidAmount: Number.isNaN(paidAmount) ? 0 : Math.min(paidAmount, Number.isNaN(cost) ? 0 : cost),
       mealsNotes: String(formData.get("mealsNotes") || "").trim(),
       notes: String(formData.get("notes") || "").trim()
     }
@@ -1157,6 +1200,12 @@ function renderActivityForm({ trip, activity = null, errors = {}, modeOverride =
       </div>
 
       <div class="form-field">
+        <label for="activity-paid-amount-input">Importo pagato, se parziale</label>
+        <input id="activity-paid-amount-input" name="paidAmount" type="number" min="0" step="0.01" value="${escapeHtml(activity?.paidAmount || "")}">
+        ${fieldError(errors, "paidAmount")}
+      </div>
+
+      <div class="form-field">
         <label for="activity-notes-input">Note</label>
         <textarea id="activity-notes-input" name="notes" rows="4">${escapeHtml(activity?.notes || "")}</textarea>
       </div>
@@ -1171,10 +1220,15 @@ function renderActivityForm({ trip, activity = null, errors = {}, modeOverride =
 
 function validateActivityForm(formData) {
   const cost = parseOptionalCost(formData.get("cost"));
+  const paidAmount = parseOptionalCost(formData.get("paidAmount"));
   const errors = {};
 
   if (Number.isNaN(cost) || cost < 0) {
     errors.cost = "Costo deve essere un numero maggiore o uguale a 0.";
+  }
+
+  if (Number.isNaN(paidAmount) || paidAmount < 0) {
+    errors.paidAmount = "Importo pagato deve essere un numero maggiore o uguale a 0.";
   }
 
   return {
@@ -1189,6 +1243,7 @@ function validateActivityForm(formData) {
       bookingNumber: String(formData.get("bookingNumber") || "").trim(),
       cost: Number.isNaN(cost) ? 0 : cost,
       paymentStatus: DOSSIER_PAYMENT_STATUSES.includes(formData.get("paymentStatus")) ? formData.get("paymentStatus") : "unpaid",
+      paidAmount: Number.isNaN(paidAmount) ? 0 : Math.min(paidAmount, Number.isNaN(cost) ? 0 : cost),
       notes: String(formData.get("notes") || "").trim()
     }
   };
@@ -1297,8 +1352,9 @@ export function renderTripDashboardView({ params }) {
           <p class="dashboard-hero__message">${getHeroMessage(status)}</p>
         </div>
         <div class="dashboard-hero__budget">
-          <span>Budget totale</span>
-          <strong>${formatCurrency(budget.budgetTotal, trip.currency)}</strong>
+          <span>Totale viaggio</span>
+          <strong>${formatCurrency(budget.plannedTotal, trip.currency)}</strong>
+          ${budget.budgetTotal > 0 ? `<p>Budget indicativo: ${formatCurrency(budget.budgetTotal, trip.currency)}</p>` : ""}
           <button class="button button--ghost button--small" type="button" data-action="edit-dashboard-trip" data-trip-id="${escapeHtml(trip.id)}">Modifica viaggio</button>
         </div>
       </article>
@@ -1317,14 +1373,14 @@ export function renderTripDashboardView({ params }) {
 
         <article class="dashboard-widget">
           <p class="dashboard-widget__label">Budget</p>
-          <h2 class="dashboard-widget__title">${formatCurrency(budget.plannedTotal, trip.currency)}</h2>
-          <p class="dashboard-widget__body">Spese manuali, voli, soggiorni e attivita.</p>
+          <h2 class="dashboard-widget__title">Totale viaggio</h2>
+          <p class="dashboard-widget__body">Registro spese e pagamenti del viaggio.</p>
           <div class="metric-list">
-            ${renderMetric("Pagato", formatCurrency(budget.paidTotal, trip.currency))}
+            ${renderMetric("Totale viaggio", formatCurrency(budget.plannedTotal, trip.currency))}
+            ${renderMetric("Gia pagato", formatCurrency(budget.paidTotal, trip.currency))}
             ${renderMetric("Da pagare", formatCurrency(budget.unpaidTotal, trip.currency))}
-            ${renderMetric("Rimanente", formatCurrency(budget.remaining, trip.currency))}
+            ${budget.budgetTotal > 0 ? renderMetric("Budget indicativo", formatCurrency(budget.budgetTotal, trip.currency)) : ""}
           </div>
-          ${budget.isOverBudget ? `<p class="budget-warning">Budget superato di ${formatCurrency(Math.abs(budget.difference), trip.currency)}</p>` : ""}
           <a class="button button--ghost button--small" href="${basePath}/budget">Apri budget &rarr;</a>
         </article>
 

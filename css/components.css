@@ -763,12 +763,20 @@
 }
 
 .dossier-empty {
+  display: grid;
+  gap: var(--space-1);
   padding: var(--space-3);
   border: 1px dashed var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface-muted);
   color: var(--color-text-muted);
   font-weight: 700;
+}
+
+.dossier-empty p + p {
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.45;
 }
 
 .dossier-recap {
@@ -1105,6 +1113,10 @@
   color: #fff;
 }
 
+.budget-status-filter {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .select-filter {
   display: grid;
   gap: var(--space-2);
@@ -1166,9 +1178,17 @@
 }
 
 .expense-card__date,
-.expense-card__notes {
+.expense-card__notes,
+.expense-card__payment {
   color: var(--color-text-muted);
   font-size: 0.92rem;
+}
+
+.expense-card__payment {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .expense-card__notes {
@@ -1864,6 +1884,10 @@
   .budget-filters {
     grid-template-columns: minmax(16rem, 1fr) minmax(12rem, 0.75fr);
     align-items: end;
+  }
+
+  .budget-status-filter {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .timeline-summary {

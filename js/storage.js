@@ -27,6 +27,13 @@ function normalizeMoney(value) {
   return Number.isFinite(amount) && amount >= 0 ? amount : 0;
 }
 
+function normalizePaidAmount(value, total = Number.POSITIVE_INFINITY) {
+  const amount = normalizeMoney(value);
+  const rawTotal = Number(total);
+  const safeTotal = Number.isFinite(rawTotal) ? normalizeMoney(rawTotal) : Number.POSITIVE_INFINITY;
+  return Math.min(amount, safeTotal);
+}
+
 function normalizePaymentStatus(value) {
   return ["unpaid", "partial", "paid"].includes(value) ? value : "unpaid";
 }
@@ -54,7 +61,7 @@ function normalizeData(data) {
     ...getDefaultData(),
     ...(data && typeof data === "object" ? data : {}),
     trips: Array.isArray(data?.trips) ? data.trips.map(normalizeTrip) : [],
-    expenses: Array.isArray(data?.expenses) ? data.expenses : [],
+    expenses: Array.isArray(data?.expenses) ? data.expenses.map(normalizeExpense) : [],
     timelineItems: Array.isArray(data?.timelineItems) ? data.timelineItems : [],
     checklistItems: Array.isArray(data?.checklistItems) ? data.checklistItems : [],
     notes: Array.isArray(data?.notes) ? data.notes : [],
@@ -78,11 +85,13 @@ function normalizeFlight(flight) {
     departureTime: String(source.departureTime || ""),
     arrivalDate: String(source.arrivalDate || ""),
     arrivalTime: String(source.arrivalTime || ""),
+    airline: String(source.airline || ""),
     flightNumber: String(source.flightNumber || ""),
     bookingNumber: String(source.bookingNumber || ""),
     baggage: String(source.baggage || ""),
     cost: normalizeMoney(source.cost),
     paymentStatus: normalizePaymentStatus(source.paymentStatus),
+    paidAmount: normalizePaidAmount(source.paidAmount, source.cost),
     notes: String(source.notes || ""),
     createdAt: source.createdAt || "",
     updatedAt: source.updatedAt || ""
@@ -104,6 +113,7 @@ function normalizeStay(stay) {
     bookingNumber: String(source.bookingNumber || ""),
     cost: normalizeMoney(source.cost),
     paymentStatus: normalizePaymentStatus(source.paymentStatus),
+    paidAmount: normalizePaidAmount(source.paidAmount, source.cost),
     mealsNotes: String(source.mealsNotes || ""),
     notes: String(source.notes || ""),
     createdAt: source.createdAt || "",
@@ -127,6 +137,26 @@ function normalizeActivity(activity) {
     bookingNumber: String(source.bookingNumber || ""),
     cost: normalizeMoney(source.cost),
     paymentStatus: normalizePaymentStatus(source.paymentStatus),
+    paidAmount: normalizePaidAmount(source.paidAmount, source.cost),
+    notes: String(source.notes || ""),
+    createdAt: source.createdAt || "",
+    updatedAt: source.updatedAt || ""
+  };
+}
+
+function normalizeExpense(expense) {
+  const source = expense && typeof expense === "object" ? expense : {};
+
+  return {
+    ...source,
+    id: String(source.id || generateId("expense")),
+    tripId: String(source.tripId || ""),
+    name: String(source.name || ""),
+    amount: normalizeMoney(source.amount),
+    category: String(source.category || "other"),
+    status: normalizePaymentStatus(source.status),
+    paidAmount: normalizePaidAmount(source.paidAmount, source.amount),
+    date: String(source.date || ""),
     notes: String(source.notes || ""),
     createdAt: source.createdAt || "",
     updatedAt: source.updatedAt || ""
@@ -591,19 +621,20 @@ export function getExpenseById(id) {
 export function createExpense(expenseData) {
   const data = getData();
   const now = new Date().toISOString();
-  const expense = {
+  const expense = normalizeExpense({
     id: generateId("expense"),
     tripId: "",
     name: "",
     amount: 0,
     category: "other",
     status: "unpaid",
+    paidAmount: 0,
     date: "",
     notes: "",
     ...expenseData,
     createdAt: now,
     updatedAt: now
-  };
+  });
 
   data.expenses = [expense, ...data.expenses];
   saveData(data);
@@ -619,14 +650,14 @@ export function updateExpense(id, updates) {
       return expense;
     }
 
-    updatedExpense = {
+    updatedExpense = normalizeExpense({
       ...expense,
       ...updates,
       id: expense.id,
       tripId: expense.tripId,
       createdAt: expense.createdAt,
       updatedAt: new Date().toISOString()
-    };
+    });
 
     return updatedExpense;
   });

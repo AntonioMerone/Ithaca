@@ -72,7 +72,7 @@
 }
 
 .app-main.has-bottom-nav {
-  padding-bottom: calc(var(--bottom-nav-height) + var(--space-8) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(var(--bottom-nav-height) + var(--space-8) + var(--space-4) + env(safe-area-inset-bottom, 0px));
 }
 
 .page {
