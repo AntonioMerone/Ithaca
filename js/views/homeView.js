@@ -5,6 +5,10 @@ import {
   createTrip,
   deleteTrip,
   getBackupFileName,
+  getActivitiesByTripId,
+  getExpensesByTripId,
+  getFlightsByTripId,
+  getStaysByTripId,
   getTripById,
   getTrips,
   importBackupPayload,
@@ -12,6 +16,7 @@ import {
   updateTrip
 } from "../storage.js";
 import {
+  calculateDossierBudgetSummary,
   calculateCountdown,
   calculateTripDuration,
   escapeHtml,
@@ -65,7 +70,7 @@ function formatDestinations(destinations = []) {
   const normalized = normalizeDestinations(destinations);
 
   if (normalized.length === 0) {
-    return "Itinerario da completare";
+    return "Nessuna destinazione inserita";
   }
 
   if (normalized.length > 3) {
@@ -73,16 +78,6 @@ function formatDestinations(destinations = []) {
   }
 
   return normalized.map((destination) => escapeHtml(destination.name)).join(" &rarr; ");
-}
-
-function shortNotes(notes) {
-  const cleanNotes = String(notes || "").trim();
-
-  if (!cleanNotes) {
-    return "";
-  }
-
-  return cleanNotes.length > 110 ? `${cleanNotes.slice(0, 107)}...` : cleanNotes;
 }
 
 function renderErrorList(errors) {
@@ -649,8 +644,14 @@ function renderEmptyState() {
 function renderTripCard(trip) {
   const duration = calculateTripDuration(trip.startDate, trip.endDate);
   const countdown = calculateCountdown(trip.startDate, trip.endDate);
-  const notes = shortNotes(trip.notes);
   const destinationCount = normalizeDestinations(trip.destinations).length;
+  const budget = calculateDossierBudgetSummary(
+    trip,
+    getExpensesByTripId(trip.id),
+    getFlightsByTripId(trip.id),
+    getStaysByTripId(trip.id),
+    getActivitiesByTripId(trip.id)
+  );
 
   return `
     <article class="trip-card">
@@ -667,10 +668,9 @@ function renderTripCard(trip) {
           <span>${duration} giorni</span>
         </div>
         <div class="trip-card__meta-row">
-          <p class="trip-card__budget">Budget ${formatCurrency(trip.budgetTotal, trip.currency)} <span>${escapeHtml(trip.currency)}</span></p>
+          <p class="trip-card__budget">Totale viaggio ${formatCurrency(budget.plannedTotal, trip.currency)}</p>
           <p class="trip-card__destination-count">${destinationCount} ${destinationCount === 1 ? "destinazione" : "destinazioni"}</p>
         </div>
-        ${notes ? `<p class="trip-card__notes">Nota: ${escapeHtml(notes)}</p>` : ""}
       </a>
       <div class="trip-card__actions" aria-label="Azioni viaggio">
         <a class="button button--primary trip-card__open" href="#/trip/${encodeURIComponent(trip.id)}">Apri dossier &rarr;</a>

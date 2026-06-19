@@ -82,7 +82,7 @@ Checklist manuale per la prima release PWA di Ithaca.
 
 - [ ] Manifest valido e raggiungibile.
 - [ ] Service worker registrato.
-- [ ] Cache aggiornata a `ithaca-shell-v14-4`.
+- [ ] Cache aggiornata a `ithaca-shell-v15`.
 - [ ] App caricabile offline dopo primo caricamento.
 - [ ] Icone manifest 192x192 e 512x512 presenti.
 - [ ] Favicon presente.
@@ -96,7 +96,7 @@ Checklist manuale per la prima release PWA di Ithaca.
 - [ ] URL GitHub Pages aperto da iPhone/Safari.
 - [ ] `index.html` usa path relativi per CSS, JS, manifest e icone.
 - [ ] `manifest.json` usa `start_url` e `scope` relativi.
-- [ ] Il service worker usa cache `ithaca-shell-v14-4`.
+- [ ] Il service worker usa cache `ithaca-shell-v15`.
 - [ ] Il service worker registra `./service-worker.js`.
 - [ ] La Home si apre da `https://USERNAME.github.io/Ithaca/#/home`.
 - [ ] Una pagina viaggio si apre da hash route senza 404 server.

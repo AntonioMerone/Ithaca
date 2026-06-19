@@ -417,8 +417,7 @@
   box-shadow: 0 1rem 2.4rem var(--color-shadow);
 }
 
-.dashboard-hero__label,
-.dashboard-hero__budget span {
+.dashboard-hero__label {
   color: var(--color-accent);
   font-size: 0.8rem;
   font-weight: 800;
@@ -463,15 +462,22 @@
 
 .dashboard-hero__budget {
   display: grid;
-  gap: var(--space-2);
+  gap: var(--space-3);
   align-content: end;
   padding-top: var(--space-4);
   border-top: 1px solid var(--color-border);
 }
 
-.dashboard-hero__budget strong {
+.dashboard-hero__budget .metric-list {
+  min-width: 0;
+}
+
+.dashboard-hero__budget .metric-row {
+  gap: var(--space-4);
+}
+
+.dashboard-hero__budget .metric-row strong {
   color: var(--color-primary);
-  font-size: 1.55rem;
 }
 
 .destinations-section {
@@ -707,6 +713,10 @@
   gap: var(--space-3);
 }
 
+.dossier-section__toggle {
+  justify-self: start;
+}
+
 .dossier-card {
   display: grid;
   min-width: 0;
@@ -777,21 +787,9 @@
 }
 
 .dossier-card__payment-detail {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
   color: var(--color-text-muted);
   font-size: 0.9rem;
-  font-weight: 800;
-}
-
-.dossier-card__payment-detail span {
-  display: inline-flex;
-  align-items: center;
-  min-height: 1.7rem;
-  padding: 0.2rem 0.5rem;
-  border-radius: 999px;
-  background: var(--color-surface-muted);
+  font-weight: 700;
 }
 
 .dossier-empty {
@@ -817,27 +815,47 @@
 
 .dossier-recap__list {
   display: grid;
+  gap: var(--space-4);
+}
+
+.dossier-recap__day {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.dossier-recap__day h3 {
+  color: var(--color-primary);
+  font-size: 1rem;
+}
+
+.dossier-recap__items {
+  display: grid;
   gap: var(--space-2);
 }
 
 .dossier-recap__item {
-  display: grid;
-  gap: var(--space-1);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
   padding: var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
 }
 
-.dossier-recap__item span {
+.dossier-recap__type {
+  flex: 0 0 auto;
+  min-width: 4.8rem;
   color: var(--color-accent);
   font-size: 0.78rem;
   font-weight: 900;
+  text-transform: uppercase;
 }
 
 .dossier-recap__item strong {
   color: var(--color-primary);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .dossier-recap__item p {
@@ -1264,20 +1282,12 @@
 }
 
 .expense-card__payment {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  font-weight: 800;
+  font-weight: 700;
 }
 
-.expense-card__payment span {
-  display: inline-flex;
-  align-items: center;
-  min-height: 1.7rem;
-  padding: 0.2rem 0.5rem;
-  border-radius: 999px;
-  background: var(--color-surface-muted);
+.payment-breakdown {
+  line-height: 1.45;
+  overflow-wrap: break-word;
 }
 
 .expense-card__notes {
@@ -1932,7 +1942,7 @@
   }
 
   .dashboard-hero__budget {
-    min-width: 13rem;
+    min-width: 16rem;
     padding-top: 0;
     padding-left: var(--space-5);
     border-top: 0;

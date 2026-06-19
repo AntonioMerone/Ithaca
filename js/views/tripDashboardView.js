@@ -56,9 +56,29 @@ import {
 } from "../utils.js";
 
 let dashboardHandlersReady = false;
+const DASHBOARD_SECTION_PREVIEW_LIMIT = 3;
+const expandedDashboardSections = new Set();
 
 function refreshView() {
   window.dispatchEvent(new CustomEvent("ithaca:refresh"));
+}
+
+function getDashboardSectionKey(tripId, section) {
+  return `${tripId}:${section}`;
+}
+
+function isDashboardSectionExpanded(tripId, section) {
+  return expandedDashboardSections.has(getDashboardSectionKey(tripId, section));
+}
+
+function toggleDashboardSection(tripId, section) {
+  const key = getDashboardSectionKey(tripId, section);
+
+  if (expandedDashboardSections.has(key)) {
+    expandedDashboardSections.delete(key);
+  } else {
+    expandedDashboardSections.add(key);
+  }
 }
 
 function handleDashboardClick(event) {
@@ -74,6 +94,11 @@ function handleDashboardClick(event) {
   if (action === "edit-dashboard-trip") {
     const trip = getTripById(tripId);
     if (trip) openTripForm(trip);
+  }
+
+  if (action === "toggle-dossier-section" && tripId) {
+    toggleDashboardSection(tripId, actionTarget.dataset.section || "");
+    refreshView();
   }
 
   if (action === "open-flight-form" && tripId) {
@@ -494,9 +519,8 @@ function renderDossierPartialPayment(item, currency) {
   }
 
   return `
-    <p class="dossier-card__payment-detail">
-      <span>Pagato ${formatCurrency(breakdown.paidAmount, currency)}</span>
-      <span>Da pagare ${formatCurrency(breakdown.dueAmount, currency)}</span>
+    <p class="payment-breakdown dossier-card__payment-detail">
+      Pagato ${formatCurrency(breakdown.paidAmount, currency)} &middot; Da pagare ${formatCurrency(breakdown.dueAmount, currency)}
     </p>
   `;
 }
@@ -603,7 +627,10 @@ function renderActivityCard(activity, trip) {
   `;
 }
 
-function renderDossierSection({ title, summary, tripId, action, emptyText, emptyDescription = "", itemsHtml }) {
+function renderDossierSection({ title, summary, tripId, section, action, emptyText, emptyDescription = "", itemsHtml, totalCount = 0 }) {
+  const isExpandable = totalCount > DASHBOARD_SECTION_PREVIEW_LIMIT;
+  const isExpanded = isDashboardSectionExpanded(tripId, section);
+
   return `
     <section class="dossier-section" aria-labelledby="${action}-title">
       <header class="dossier-section__header">
@@ -619,14 +646,30 @@ function renderDossierSection({ title, summary, tripId, action, emptyText, empty
           ${emptyDescription ? `<p>${escapeHtml(emptyDescription)}</p>` : ""}
         </article>
       `}
+      ${isExpandable ? `
+        <button class="button button--ghost button--small dossier-section__toggle" type="button" data-action="toggle-dossier-section" data-trip-id="${escapeHtml(tripId)}" data-section="${escapeHtml(section)}">
+          ${isExpanded ? "Mostra meno" : "Mostra tutti"}
+        </button>
+      ` : ""}
     </section>
   `;
+}
+
+function getVisibleDossierItems(tripId, section, items) {
+  if (isDashboardSectionExpanded(tripId, section) || items.length <= DASHBOARD_SECTION_PREVIEW_LIMIT) {
+    return items;
+  }
+
+  return items.slice(0, DASHBOARD_SECTION_PREVIEW_LIMIT);
 }
 
 function renderDossierSections(trip, flights, stays, activities) {
   const sortedFlights = sortByDateTime(flights, "departureDate", "departureTime");
   const sortedStays = sortByDateTime(stays, "checkInDate");
   const sortedActivities = sortByDateTime(activities, "date", "time");
+  const visibleFlights = getVisibleDossierItems(trip.id, "flights", sortedFlights);
+  const visibleStays = getVisibleDossierItems(trip.id, "stays", sortedStays);
+  const visibleActivities = getVisibleDossierItems(trip.id, "activities", sortedActivities);
 
   return `
     <section class="dossier-sections" aria-label="Sezioni dossier">
@@ -634,26 +677,32 @@ function renderDossierSections(trip, flights, stays, activities) {
         title: "Voli",
         summary: flights.length === 1 ? "1 volo" : `${flights.length} voli`,
         tripId: trip.id,
+        section: "flights",
         action: "open-flight-form",
         emptyText: "Nessun volo inserito.",
-        itemsHtml: sortedFlights.map((flight) => renderFlightCard(flight, trip.currency || "EUR")).join("")
+        itemsHtml: visibleFlights.map((flight) => renderFlightCard(flight, trip.currency || "EUR")).join(""),
+        totalCount: sortedFlights.length
       })}
       ${renderDossierSection({
         title: "Soggiorni",
         summary: stays.length === 1 ? "1 soggiorno" : `${stays.length} soggiorni`,
         tripId: trip.id,
+        section: "stays",
         action: "open-stay-form",
         emptyText: "Nessun soggiorno inserito.",
-        itemsHtml: sortedStays.map((stay) => renderStayCard(stay, trip)).join("")
+        itemsHtml: visibleStays.map((stay) => renderStayCard(stay, trip)).join(""),
+        totalCount: sortedStays.length
       })}
       ${renderDossierSection({
         title: "Attivita",
         summary: activities.length === 1 ? "1 attivita" : `${activities.length} attivita`,
         tripId: trip.id,
+        section: "activities",
         action: "open-activity-form",
         emptyText: "Nessuna attivita inserita.",
         emptyDescription: "Aggiungi escursioni, visite, ristoranti prenotati o attivita con data e costo.",
-        itemsHtml: sortedActivities.map((activity) => renderActivityCard(activity, trip)).join("")
+        itemsHtml: visibleActivities.map((activity) => renderActivityCard(activity, trip)).join(""),
+        totalCount: sortedActivities.length
       })}
     </section>
   `;
@@ -666,22 +715,27 @@ function buildDossierRecap({ timelineItems, flights, stays, activities }) {
     if (item.date) {
       entries.push({
         date: item.date,
-        time: item.time,
+        time: item.time || "",
         label: "Timeline",
         title: item.title,
-        meta: item.location
+        meta: item.location || "",
+        order: entries.length
       });
     }
   });
 
   flights.forEach((flight) => {
     if (flight.departureDate) {
+      const flightIdentity = [flight.airline, flight.flightNumber].filter(Boolean).join(" ");
+      const route = [flight.from, flight.to].filter(Boolean).join(" -> ");
+
       entries.push({
         date: flight.departureDate,
-        time: flight.departureTime,
+        time: flight.departureTime || "",
         label: "Volo",
-        title: [flight.from, flight.to].filter(Boolean).join(" -> ") || flight.flightNumber || "Volo",
-        meta: flight.flightNumber
+        title: [flightIdentity, route].filter(Boolean).join(" · ") || "Volo",
+        meta: "",
+        order: entries.length
       });
     }
   });
@@ -691,9 +745,10 @@ function buildDossierRecap({ timelineItems, flights, stays, activities }) {
       entries.push({
         date: stay.checkInDate,
         time: "",
-        label: "Soggiorno",
-        title: stay.structureName || "Check-in soggiorno",
-        meta: "Check-in"
+        label: "Check-in",
+        title: stay.structureName || "Alloggio",
+        meta: "",
+        order: entries.length
       });
     }
 
@@ -701,9 +756,10 @@ function buildDossierRecap({ timelineItems, flights, stays, activities }) {
       entries.push({
         date: stay.checkOutDate,
         time: "",
-        label: "Soggiorno",
-        title: stay.structureName || "Check-out soggiorno",
-        meta: "Check-out"
+        label: "Check-out",
+        title: stay.structureName || "Alloggio",
+        meta: "",
+        order: entries.length
       });
     }
   });
@@ -712,39 +768,86 @@ function buildDossierRecap({ timelineItems, flights, stays, activities }) {
     if (activity.date) {
       entries.push({
         date: activity.date,
-        time: activity.time,
-        label: getActivityTypeLabel(activity.type),
+        time: activity.time || "",
+        label: getActivityTypeLabel(activity.type) || "Attivita",
         title: activity.name || "Attivita",
-        meta: activity.location
+        meta: activity.location || "",
+        order: entries.length
       });
     }
   });
 
-  return entries
-    .sort((a, b) => `${a.date}T${a.time || "23:59"}`.localeCompare(`${b.date}T${b.time || "23:59"}`))
-    .slice(0, 6);
+  return entries.sort((a, b) => {
+    const dateComparison = a.date.localeCompare(b.date);
+
+    if (dateComparison !== 0) {
+      return dateComparison;
+    }
+
+    if (a.time && b.time && a.time !== b.time) {
+      return a.time.localeCompare(b.time);
+    }
+
+    if (a.time !== b.time) {
+      return a.time ? -1 : 1;
+    }
+
+    return a.order - b.order;
+  });
+}
+
+function groupDossierRecapByDate(entries) {
+  return entries.reduce((groups, entry) => {
+    const currentGroup = groups.find((group) => group.date === entry.date);
+
+    if (currentGroup) {
+      currentGroup.items.push(entry);
+    } else {
+      groups.push({
+        date: entry.date,
+        items: [entry]
+      });
+    }
+
+    return groups;
+  }, []);
 }
 
 function renderDossierRecap(context) {
   const entries = buildDossierRecap(context);
+  const groups = groupDossierRecapByDate(entries);
 
   return `
     <section class="panel panel--wide dossier-recap" aria-labelledby="dossier-recap-title">
       <div>
         <p class="page__eyebrow">Recap viaggio</p>
-        <h2 class="panel__title" id="dossier-recap-title">Elementi datati</h2>
+        <h2 class="panel__title" id="dossier-recap-title">Timeline per giorno</h2>
       </div>
-      ${entries.length ? `
+      ${groups.length ? `
         <div class="dossier-recap__list">
-          ${entries.map((entry) => `
-            <article class="dossier-recap__item">
-              <span>${formatDate(entry.date)}${entry.time ? `, ${escapeHtml(entry.time)}` : ""}</span>
-              <strong>${escapeHtml(entry.title)}</strong>
-              <p>${escapeHtml(entry.label)}${entry.meta ? ` &middot; ${escapeHtml(entry.meta)}` : ""}</p>
-            </article>
+          ${groups.map((group) => `
+            <section class="dossier-recap__day" aria-label="${formatDate(group.date)}">
+              <h3>${formatDate(group.date)}</h3>
+              <div class="dossier-recap__items">
+                ${group.items.map((entry) => `
+                  <article class="dossier-recap__item">
+                    <span class="dossier-recap__type">${escapeHtml(entry.label)}</span>
+                    <div>
+                      <strong>${entry.time ? `${escapeHtml(entry.time)} · ` : ""}${escapeHtml(entry.title)}</strong>
+                      ${entry.meta ? `<p>${escapeHtml(entry.meta)}</p>` : ""}
+                    </div>
+                  </article>
+                `).join("")}
+              </div>
+            </section>
           `).join("")}
         </div>
-      ` : `<p class="panel__body">Aggiungi voli, soggiorni, attivita o tappe manuali per vedere il recap.</p>`}
+      ` : `
+        <div class="dossier-empty">
+          <p>Nessun evento datato nel recap.</p>
+          <p>Aggiungi voli, alloggi, attivita o tappe nella timeline.</p>
+        </div>
+      `}
     </section>
   `;
 }
@@ -1356,32 +1459,29 @@ export function renderTripDashboardView({ params }) {
 
   return `
     <section class="page dashboard-page" data-dashboard-trip-id="${escapeHtml(trip.id)}" aria-labelledby="trip-title">
-      <header class="page__header dashboard-header">
-        <p class="page__eyebrow">Dashboard viaggio</p>
-        <h1 class="page__title" id="trip-title">${escapeHtml(trip.name)}</h1>
-        <p class="page__summary">${destinations}</p>
-        <p class="dashboard-header__meta">${formatDate(trip.startDate)} - ${formatDate(trip.endDate)}</p>
-        <p class="dashboard-header__meta">${duration} giorni &middot; ${escapeHtml(countdown)}</p>
-        ${renderTripNotes(trip.notes)}
-      </header>
-
-      <article class="dashboard-hero">
+      <header class="dashboard-hero">
         <div>
-          <p class="dashboard-hero__label">Centro dossier</p>
-          <p class="dashboard-hero__count">${escapeHtml(countdown)}</p>
+          <p class="dashboard-hero__label">Dashboard viaggio</p>
+          <h1 class="page__title" id="trip-title">${escapeHtml(trip.name)}</h1>
+          <p class="page__summary">${destinations}</p>
           <div class="dashboard-hero__meta">
             <span>${formatDate(trip.startDate)} - ${formatDate(trip.endDate)}</span>
             <span>${duration} giorni</span>
-            <span>${destinations}</span>
+            <span>${escapeHtml(countdown)}</span>
+            <span>${escapeHtml(statusLabel)}</span>
           </div>
           <p class="dashboard-hero__message">${getHeroMessage(status)}</p>
+          ${renderTripNotes(trip.notes)}
         </div>
         <div class="dashboard-hero__budget">
-          <span>Totale viaggio</span>
-          <strong>${formatCurrency(budget.plannedTotal, trip.currency)}</strong>
+          <div class="metric-list">
+            ${renderMetric("Totale viaggio", formatCurrency(budget.plannedTotal, trip.currency))}
+            ${renderMetric("Gia pagato", formatCurrency(budget.paidTotal, trip.currency))}
+            ${renderMetric("Da pagare", formatCurrency(budget.unpaidTotal, trip.currency))}
+          </div>
           <button class="button button--ghost button--small" type="button" data-action="edit-dashboard-trip" data-trip-id="${escapeHtml(trip.id)}">Modifica viaggio</button>
         </div>
-      </article>
+      </header>
 
       ${renderDestinationsSection(normalizedDestinations, trip.currency)}
       ${renderDossierSections(trip, flights, stays, activities)}

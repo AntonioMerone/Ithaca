@@ -302,12 +302,22 @@ function renderNoFilterResults() {
 function renderLedgerPayment(item, currency) {
   return item.status === "partial"
     ? `
-      <p class="expense-card__payment">
-        <span>Pagato ${formatCurrency(item.paidAmount, currency)}</span>
-        <span>Da pagare ${formatCurrency(item.dueAmount, currency)}</span>
+      <p class="payment-breakdown expense-card__payment">
+        Pagato ${formatCurrency(item.paidAmount, currency)} &middot; Da pagare ${formatCurrency(item.dueAmount, currency)}
       </p>
     `
     : "";
+}
+
+function getLedgerDateLabel(item) {
+  const labels = {
+    flights: "Data volo",
+    stays: "Check-in",
+    activities: "Data attività",
+    expenses: "Scadenza"
+  };
+
+  return labels[item.source] || "Data";
 }
 
 function renderLedgerActions(item) {
@@ -340,7 +350,7 @@ function renderLedgerCard(item, currency) {
       </div>
       <h2 class="expense-card__title">${escapeHtml(item.title)}</h2>
       ${renderLedgerPayment(item, currency)}
-      ${item.date ? `<p class="expense-card__date">Data / scadenza: ${formatDate(item.date)}</p>` : `<p class="expense-card__date">Senza data</p>`}
+      ${item.date ? `<p class="expense-card__date">${getLedgerDateLabel(item)}: ${formatDate(item.date)}</p>` : `<p class="expense-card__date">Senza data</p>`}
       ${item.meta ? `<p class="expense-card__detail">${escapeHtml(item.meta)}</p>` : ""}
       ${notes ? `<p class="expense-card__notes">${escapeHtml(notes)}</p>` : ""}
       ${renderLedgerActions(item)}
