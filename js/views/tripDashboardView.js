@@ -473,6 +473,34 @@ function renderDossierPayment(item, currency) {
   `;
 }
 
+function renderDossierPaymentSummary(item, currency) {
+  const hasCost = Number(item.cost || 0) > 0;
+  const status = getDossierPaymentStatusLabel(item.paymentStatus);
+  const badgeClass = getDossierPaymentStatusBadge(item.paymentStatus);
+
+  return `
+    <p class="dossier-card__payment">
+      <span class="badge ${badgeClass}">${escapeHtml(status)}</span>
+      ${hasCost ? `<strong>${formatCurrency(item.cost, currency)}</strong>` : ""}
+    </p>
+  `;
+}
+
+function renderDossierPartialPayment(item, currency) {
+  const breakdown = getPaymentBreakdown(item);
+
+  if (item.paymentStatus !== "partial") {
+    return "";
+  }
+
+  return `
+    <p class="dossier-card__payment-detail">
+      <span>Pagato ${formatCurrency(breakdown.paidAmount, currency)}</span>
+      <span>Da pagare ${formatCurrency(breakdown.dueAmount, currency)}</span>
+    </p>
+  `;
+}
+
 function getDestinationName(destinations, destinationId) {
   return normalizeDestinations(destinations).find((destination) => destination.id === destinationId)?.name || "";
 }
@@ -495,15 +523,14 @@ function renderFlightCard(flight, currency) {
 
   return `
     <article class="dossier-card">
-      <div class="dossier-card__header">
-        <div>
-          <p class="dossier-card__eyebrow">${escapeHtml(getFlightTypeLabel(flight.type))}</p>
-          <h3 class="dossier-card__title">${route}</h3>
-        </div>
-        ${renderDossierPayment(flight, currency)}
+      <div class="dossier-card__topline">
+        <p class="dossier-card__eyebrow">${escapeHtml(getFlightTypeLabel(flight.type))}</p>
+        ${renderDossierPaymentSummary(flight, currency)}
       </div>
+      <h3 class="dossier-card__title">${route}</h3>
       ${dateLine ? `<p class="dossier-card__meta">${dateLine}</p>` : ""}
       ${referenceParts.length ? `<p class="dossier-card__meta">${referenceParts.map(escapeHtml).join(" &middot; ")}</p>` : ""}
+      ${renderDossierPartialPayment(flight, currency)}
       ${flight.notes ? `<p class="dossier-card__notes">${escapeHtml(flight.notes)}</p>` : ""}
       <div class="trip-card__actions" aria-label="Azioni volo">
         <button class="button button--small button--ghost" type="button" data-action="edit-flight" data-flight-id="${escapeHtml(flight.id)}">Modifica</button>
@@ -525,16 +552,15 @@ function renderStayCard(stay, trip) {
 
   return `
     <article class="dossier-card">
-      <div class="dossier-card__header">
-        <div>
-          <p class="dossier-card__eyebrow">Soggiorno</p>
-          <h3 class="dossier-card__title">${escapeHtml(title)}</h3>
-        </div>
-        ${renderDossierPayment(stay, trip.currency || "EUR")}
+      <div class="dossier-card__topline">
+        <p class="dossier-card__eyebrow">Soggiorno</p>
+        ${renderDossierPaymentSummary(stay, trip.currency || "EUR")}
       </div>
+      <h3 class="dossier-card__title">${escapeHtml(title)}</h3>
       ${range ? `<p class="dossier-card__meta">${range}</p>` : ""}
       ${referenceParts.length ? `<p class="dossier-card__meta">${referenceParts.map(escapeHtml).join(" &middot; ")}</p>` : ""}
       ${stay.mealsNotes ? `<p class="dossier-card__meta">${escapeHtml(stay.mealsNotes)}</p>` : ""}
+      ${renderDossierPartialPayment(stay, trip.currency || "EUR")}
       ${stay.notes ? `<p class="dossier-card__notes">${escapeHtml(stay.notes)}</p>` : ""}
       <div class="trip-card__actions" aria-label="Azioni soggiorno">
         <button class="button button--small button--ghost" type="button" data-action="edit-stay" data-stay-id="${escapeHtml(stay.id)}">Modifica</button>
@@ -560,15 +586,14 @@ function renderActivityCard(activity, trip) {
 
   return `
     <article class="dossier-card">
-      <div class="dossier-card__header">
-        <div>
-          <p class="dossier-card__eyebrow">${escapeHtml(getActivityTypeLabel(activity.type))}</p>
-          <h3 class="dossier-card__title">${escapeHtml(title)}</h3>
-        </div>
-        ${renderDossierPayment(activity, trip.currency || "EUR")}
+      <div class="dossier-card__topline">
+        <p class="dossier-card__eyebrow">${escapeHtml(getActivityTypeLabel(activity.type))}</p>
+        ${renderDossierPaymentSummary(activity, trip.currency || "EUR")}
       </div>
+      <h3 class="dossier-card__title">${escapeHtml(title)}</h3>
       ${dateLine ? `<p class="dossier-card__meta">${dateLine}</p>` : ""}
       ${referenceParts.length ? `<p class="dossier-card__meta">${referenceParts.map(escapeHtml).join(" &middot; ")}</p>` : ""}
+      ${renderDossierPartialPayment(activity, trip.currency || "EUR")}
       ${activity.notes ? `<p class="dossier-card__notes">${escapeHtml(activity.notes)}</p>` : ""}
       <div class="trip-card__actions" aria-label="Azioni attivita">
         <button class="button button--small button--ghost" type="button" data-action="edit-activity" data-activity-id="${escapeHtml(activity.id)}">Modifica</button>
@@ -1354,7 +1379,6 @@ export function renderTripDashboardView({ params }) {
         <div class="dashboard-hero__budget">
           <span>Totale viaggio</span>
           <strong>${formatCurrency(budget.plannedTotal, trip.currency)}</strong>
-          ${budget.budgetTotal > 0 ? `<p>Budget indicativo: ${formatCurrency(budget.budgetTotal, trip.currency)}</p>` : ""}
           <button class="button button--ghost button--small" type="button" data-action="edit-dashboard-trip" data-trip-id="${escapeHtml(trip.id)}">Modifica viaggio</button>
         </div>
       </article>
@@ -1379,7 +1403,6 @@ export function renderTripDashboardView({ params }) {
             ${renderMetric("Totale viaggio", formatCurrency(budget.plannedTotal, trip.currency))}
             ${renderMetric("Gia pagato", formatCurrency(budget.paidTotal, trip.currency))}
             ${renderMetric("Da pagare", formatCurrency(budget.unpaidTotal, trip.currency))}
-            ${budget.budgetTotal > 0 ? renderMetric("Budget indicativo", formatCurrency(budget.budgetTotal, trip.currency)) : ""}
           </div>
           <a class="button button--ghost button--small" href="${basePath}/budget">Apri budget &rarr;</a>
         </article>

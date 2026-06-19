@@ -722,19 +722,31 @@
   gap: var(--space-2);
 }
 
+.dossier-card__topline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
 .dossier-card__eyebrow {
+  min-width: 0;
   color: var(--color-accent);
   font-size: 0.72rem;
   font-weight: 900;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  overflow-wrap: break-word;
 }
 
 .dossier-card__title {
   color: var(--color-primary);
   font-size: 1.02rem;
   line-height: 1.25;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .dossier-card__meta,
@@ -755,11 +767,31 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
+  justify-content: flex-end;
+  min-width: 0;
 }
 
 .dossier-card__payment strong {
   color: var(--color-primary);
   white-space: nowrap;
+}
+
+.dossier-card__payment-detail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.dossier-card__payment-detail span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.7rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: var(--color-surface-muted);
 }
 
 .dossier-empty {
@@ -1089,6 +1121,18 @@
   gap: var(--space-3);
 }
 
+.budget-filter-group {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.budget-filter-group > span {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
 .segmented-control {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1114,6 +1158,10 @@
 }
 
 .budget-status-filter {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.budget-source-filter {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
@@ -1143,12 +1191,18 @@
 
 .expense-card {
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-2);
   padding: var(--space-4);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
   box-shadow: 0 0.75rem 2rem var(--color-shadow);
+}
+
+.expense-card__header {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
 }
 
 .expense-card__main {
@@ -1161,6 +1215,8 @@
 .expense-card__title {
   font-size: 1.05rem;
   line-height: 1.25;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .expense-card__amount {
@@ -1174,12 +1230,35 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
-  margin-top: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.expense-card__meta span + span::before {
+  content: "·";
+  margin-right: var(--space-2);
+  color: var(--color-border-strong);
+}
+
+.expense-card__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.expense-card__status strong {
+  color: var(--color-primary);
+  font-size: 1.08rem;
+  white-space: nowrap;
 }
 
 .expense-card__date,
 .expense-card__notes,
-.expense-card__payment {
+.expense-card__payment,
+.expense-card__detail {
   color: var(--color-text-muted);
   font-size: 0.92rem;
 }
@@ -1189,6 +1268,16 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
+  font-weight: 800;
+}
+
+.expense-card__payment span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.7rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: var(--color-surface-muted);
 }
 
 .expense-card__notes {
@@ -1888,6 +1977,15 @@
 
   .budget-status-filter {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .budget-source-filter {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .expense-card__header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
   }
 
   .timeline-summary {

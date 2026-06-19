@@ -23,7 +23,9 @@ import {
   getDossierPaymentStatusLabel,
   getExpenseCategoryLabel,
   getExpenseStatusLabel,
-  getPaymentBreakdown
+  getFlightTypeLabel,
+  getPaymentBreakdown,
+  getStayTypeLabel
 } from "../utils.js";
 
 const budgetFilters = new Map();
@@ -37,11 +39,17 @@ const ORIGIN_ORDER = {
 };
 
 function getFilter(tripId) {
-  return budgetFilters.get(tripId) || "all";
+  return budgetFilters.get(tripId) || {
+    status: "all",
+    source: "all"
+  };
 }
 
-function setFilter(tripId, status) {
-  budgetFilters.set(tripId, status || "all");
+function setFilter(tripId, updates) {
+  budgetFilters.set(tripId, {
+    ...getFilter(tripId),
+    ...updates
+  });
 }
 
 function refreshView() {
@@ -101,7 +109,8 @@ function buildLedgerItems({ expenses, flights, stays, activities }) {
     return {
       id: expense.id,
       origin: "manual",
-      originLabel: "Manuale",
+      source: "expenses",
+      originLabel: "Spesa",
       title: expense.name || "Spesa manuale",
       totalAmount: breakdown.totalAmount,
       paidAmount: breakdown.paidAmount,
@@ -110,6 +119,7 @@ function buildLedgerItems({ expenses, flights, stays, activities }) {
       date: expense.date || "",
       createdAt: expense.createdAt || "",
       meta: getExpenseCategoryLabel(expense.category),
+      typeLabel: getExpenseCategoryLabel(expense.category),
       notes: expense.notes || "",
       editable: true
     };
@@ -123,6 +133,7 @@ function buildLedgerItems({ expenses, flights, stays, activities }) {
     return {
       id: flight.id,
       origin: "flight",
+      source: "flights",
       originLabel: "Volo",
       title: identity || route || "Volo",
       totalAmount: breakdown.totalAmount,
@@ -131,7 +142,8 @@ function buildLedgerItems({ expenses, flights, stays, activities }) {
       status: breakdown.status,
       date: flight.departureDate || "",
       createdAt: flight.createdAt || "",
-      meta: route,
+      meta: route || getFlightTypeLabel(flight.type),
+      typeLabel: "Trasporto",
       notes: flight.notes || "",
       editable: false
     };
@@ -143,15 +155,17 @@ function buildLedgerItems({ expenses, flights, stays, activities }) {
     return {
       id: stay.id,
       origin: "stay",
-      originLabel: "Soggiorno",
-      title: stay.structureName || "Soggiorno",
+      source: "stays",
+      originLabel: "Alloggio",
+      title: stay.structureName || "Alloggio",
       totalAmount: breakdown.totalAmount,
       paidAmount: breakdown.paidAmount,
       dueAmount: breakdown.dueAmount,
       status: breakdown.status,
       date: stay.checkInDate || "",
       createdAt: stay.createdAt || "",
-      meta: stay.bookingNumber ? `Prenotazione ${stay.bookingNumber}` : "",
+      meta: stay.bookingNumber ? `Prenotazione ${stay.bookingNumber}` : getStayTypeLabel(stay.structureType),
+      typeLabel: getStayTypeLabel(stay.structureType),
       notes: stay.notes || "",
       editable: false
     };
@@ -163,6 +177,7 @@ function buildLedgerItems({ expenses, flights, stays, activities }) {
     return {
       id: activity.id,
       origin: "activity",
+      source: "activities",
       originLabel: "Attivita",
       title: activity.name || getActivityTypeLabel(activity.type),
       totalAmount: breakdown.totalAmount,
@@ -171,6 +186,7 @@ function buildLedgerItems({ expenses, flights, stays, activities }) {
       status: breakdown.status,
       date: activity.date || "",
       createdAt: activity.createdAt || "",
+      typeLabel: getActivityTypeLabel(activity.type),
       meta: [getActivityTypeLabel(activity.type), activity.location].filter(Boolean).join(" · "),
       notes: activity.notes || "",
       editable: false
@@ -207,27 +223,59 @@ function sortLedgerItems(items) {
   });
 }
 
-function filterLedgerItems(items, activeStatus) {
-  if (activeStatus === "all") {
-    return items;
-  }
-
-  return items.filter((item) => item.status === activeStatus);
+function filterLedgerItems(items, filters) {
+  return items.filter((item) => {
+    const statusMatch = filters.status === "all" || item.status === filters.status;
+    const sourceMatch = filters.source === "all" || item.source === filters.source;
+    return statusMatch && sourceMatch;
+  });
 }
 
-function renderFilters(tripId, activeStatus) {
+function renderSegmentedFilter({ tripId, label, action, activeValue, options, className = "" }) {
   return `
-    <section class="segmented-control budget-status-filter" aria-label="Filtri registro spese">
-      ${[
-        ["all", "Tutte"],
-        ["unpaid", "Da pagare"],
-        ["partial", "Parziali"],
-        ["paid", "Pagate"]
-      ].map(([value, label]) => `
-        <button class="segmented-control__button" type="button" data-action="filter-expense-status" data-trip-id="${escapeHtml(tripId)}" data-filter-value="${value}" aria-pressed="${activeStatus === value}">
-          ${label}
-        </button>
-      `).join("")}
+    <div class="budget-filter-group">
+      <span>${label}</span>
+      <section class="segmented-control ${className}" aria-label="${escapeHtml(label)}">
+        ${options.map(([value, optionLabel]) => `
+          <button class="segmented-control__button" type="button" data-action="${action}" data-trip-id="${escapeHtml(tripId)}" data-filter-value="${value}" aria-pressed="${activeValue === value}">
+            ${optionLabel}
+          </button>
+        `).join("")}
+      </section>
+    </div>
+  `;
+}
+
+function renderFilters(tripId, filters) {
+  return `
+    <section class="budget-filters" aria-label="Filtri registro spese">
+      ${renderSegmentedFilter({
+        tripId,
+        label: "Stato pagamento",
+        action: "filter-expense-status",
+        activeValue: filters.status,
+        className: "budget-status-filter",
+        options: [
+          ["all", "Tutte"],
+          ["unpaid", "Da pagare"],
+          ["partial", "Parziali"],
+          ["paid", "Pagate"]
+        ]
+      })}
+      ${renderSegmentedFilter({
+        tripId,
+        label: "Tipologia",
+        action: "filter-expense-source",
+        activeValue: filters.source,
+        className: "budget-source-filter",
+        options: [
+          ["all", "Tutte"],
+          ["flights", "Voli"],
+          ["stays", "Alloggi"],
+          ["activities", "Attivita"],
+          ["expenses", "Spese"]
+        ]
+      })}
     </section>
   `;
 }
@@ -246,27 +294,32 @@ function renderNoFilterResults() {
   return `
     <article class="panel panel--wide">
       <h2 class="panel__title">Nessun risultato</h2>
-      <p class="panel__body">Nessuna voce corrisponde al filtro selezionato.</p>
+      <p class="panel__body">Nessun elemento trovato per i filtri selezionati.</p>
     </article>
   `;
 }
 
 function renderLedgerPayment(item, currency) {
-  if (item.status === "partial") {
-    return `
+  return item.status === "partial"
+    ? `
       <p class="expense-card__payment">
-        <span class="badge ${getStatusBadgeClass(item.status)}">Parziale</span>
         <span>Pagato ${formatCurrency(item.paidAmount, currency)}</span>
         <span>Da pagare ${formatCurrency(item.dueAmount, currency)}</span>
       </p>
-    `;
+    `
+    : "";
+}
+
+function renderLedgerActions(item) {
+  if (!item.editable) {
+    return "";
   }
 
   return `
-    <p class="expense-card__payment">
-      <span class="badge ${getStatusBadgeClass(item.status)}">${escapeHtml(getStatusLabel(item.status))}</span>
-      <span>${item.status === "paid" ? "Gia pagato" : "Da pagare"} ${formatCurrency(item.status === "paid" ? item.paidAmount : item.dueAmount, currency)}</span>
-    </p>
+    <div class="trip-card__actions" aria-label="Azioni spesa manuale">
+      <button class="button button--small button--ghost" type="button" data-action="edit-expense" data-expense-id="${escapeHtml(item.id)}">Modifica</button>
+      <button class="button button--small button--danger-ghost" type="button" data-action="delete-expense" data-expense-id="${escapeHtml(item.id)}">Elimina</button>
+    </div>
   `;
 }
 
@@ -275,31 +328,22 @@ function renderLedgerCard(item, currency) {
 
   return `
     <article class="expense-card">
-      <div class="expense-card__main">
-        <div>
-          <p class="expense-card__meta">
-            <span class="badge">${escapeHtml(item.originLabel)}</span>
-            ${item.meta ? `<span>${escapeHtml(item.meta)}</span>` : ""}
-          </p>
-          <h2 class="expense-card__title">${escapeHtml(item.title)}</h2>
-        </div>
-        <strong class="expense-card__amount">${formatCurrency(item.totalAmount, currency)}</strong>
-      </div>
-      <div class="metric-list">
-        <div class="metric-row">
-          <span>Costo</span>
+      <div class="expense-card__header">
+        <p class="expense-card__meta">
+          <span>${escapeHtml(item.originLabel)}</span>
+          ${item.typeLabel ? `<span>${escapeHtml(item.typeLabel)}</span>` : ""}
+        </p>
+        <p class="expense-card__status">
+          <span class="badge ${getStatusBadgeClass(item.status)}">${escapeHtml(getStatusLabel(item.status))}</span>
           <strong>${formatCurrency(item.totalAmount, currency)}</strong>
-        </div>
+        </p>
       </div>
+      <h2 class="expense-card__title">${escapeHtml(item.title)}</h2>
       ${renderLedgerPayment(item, currency)}
       ${item.date ? `<p class="expense-card__date">Data / scadenza: ${formatDate(item.date)}</p>` : `<p class="expense-card__date">Senza data</p>`}
+      ${item.meta ? `<p class="expense-card__detail">${escapeHtml(item.meta)}</p>` : ""}
       ${notes ? `<p class="expense-card__notes">${escapeHtml(notes)}</p>` : ""}
-      ${item.editable ? `
-        <div class="trip-card__actions" aria-label="Azioni spesa manuale">
-          <button class="button button--small button--ghost" type="button" data-action="edit-expense" data-expense-id="${escapeHtml(item.id)}">Modifica</button>
-          <button class="button button--small button--danger-ghost" type="button" data-action="delete-expense" data-expense-id="${escapeHtml(item.id)}">Elimina</button>
-        </div>
-      ` : ""}
+      ${renderLedgerActions(item)}
     </article>
   `;
 }
@@ -523,7 +567,12 @@ function handleBudgetClick(event) {
   }
 
   if (action === "filter-expense-status" && tripId) {
-    setFilter(tripId, actionTarget.dataset.filterValue || "all");
+    setFilter(tripId, { status: actionTarget.dataset.filterValue || "all" });
+    refreshView();
+  }
+
+  if (action === "filter-expense-source" && tripId) {
+    setFilter(tripId, { source: actionTarget.dataset.filterValue || "all" });
     refreshView();
   }
 
@@ -625,8 +674,8 @@ export function renderBudgetView({ params }) {
   const stays = getStaysByTripId(trip.id);
   const activities = getActivitiesByTripId(trip.id);
   const ledgerItems = sortLedgerItems(buildLedgerItems({ expenses, flights, stays, activities }));
-  const activeStatus = getFilter(trip.id);
-  const filteredItems = filterLedgerItems(ledgerItems, activeStatus);
+  const filters = getFilter(trip.id);
+  const filteredItems = filterLedgerItems(ledgerItems, filters);
   const summary = calculateDossierBudgetSummary(trip, expenses, flights, stays, activities);
   const currency = trip.currency || "EUR";
   const encodedTripId = encodeURIComponent(trip.id);
@@ -638,7 +687,6 @@ export function renderBudgetView({ params }) {
           <p class="page__eyebrow">Registro spese</p>
           <h1 class="page__title" id="budget-title">${escapeHtml(trip.name)}</h1>
           <p class="page__summary">Quanto costa il viaggio, quanto hai gia pagato e quanto resta da pagare.</p>
-          ${summary.budgetTotal > 0 ? `<p class="dashboard-header__meta">Budget indicativo: ${formatCurrency(summary.budgetTotal, currency)}</p>` : ""}
         </div>
         <a class="button button--ghost dossier-back-link" href="#/trip/${encodedTripId}">&larr; Dossier</a>
       </header>
@@ -651,7 +699,7 @@ export function renderBudgetView({ params }) {
 
       <div class="budget-toolbar">
         <button class="button button--primary" type="button" data-action="open-expense-form" data-trip-id="${escapeHtml(trip.id)}">Aggiungi spesa</button>
-        ${renderFilters(trip.id, activeStatus)}
+        ${renderFilters(trip.id, filters)}
       </div>
 
       ${renderLedgerList(ledgerItems, filteredItems, currency)}
