@@ -23,13 +23,13 @@ import {
   getDossierPaymentStatusLabel,
   getExpenseCategoryLabel,
   getExpenseStatusLabel,
-  getFlightTypeLabel,
   getPaymentBreakdown,
   getStayTypeLabel
 } from "../utils.js";
 
 const budgetFilters = new Map();
 let budgetHandlersReady = false;
+const ZERO_COST_WARNING_COPY = "Costo 0 € con pagamento segnato: controlla se il dato è corretto.";
 
 const ORIGIN_ORDER = {
   manual: 0,
@@ -102,9 +102,30 @@ function getStatusLabel(status) {
   return status === "partial" ? "Parziale" : getExpenseStatusLabel(status);
 }
 
+function cleanLabel(value) {
+  return String(value || "").trim();
+}
+
+function getManualExpenseTypeLabel(category) {
+  const normalizedCategory = cleanLabel(category);
+
+  return normalizedCategory ? getExpenseCategoryLabel(normalizedCategory) : "";
+}
+
+function getFlightLedgerCopy(flight) {
+  const identity = [flight.airline, flight.flightNumber].map(cleanLabel).filter(Boolean).join(" ");
+  const route = [flight.from, flight.to].map(cleanLabel).filter(Boolean).join(" -> ");
+
+  return {
+    title: identity || route || "Volo",
+    meta: identity && route ? route : ""
+  };
+}
+
 function buildLedgerItems({ expenses, flights, stays, activities }) {
   const manualItems = expenses.map((expense) => {
     const breakdown = getPaymentBreakdown(expense, "amount", "status");
+    const categoryLabel = getManualExpenseTypeLabel(expense.category);
 
     return {
       id: expense.id,
@@ -118,8 +139,8 @@ function buildLedgerItems({ expenses, flights, stays, activities }) {
       status: breakdown.status,
       date: expense.date || "",
       createdAt: expense.createdAt || "",
-      meta: getExpenseCategoryLabel(expense.category),
-      typeLabel: getExpenseCategoryLabel(expense.category),
+      meta: categoryLabel,
+      typeLabel: categoryLabel,
       notes: expense.notes || "",
       editable: true
     };
@@ -127,22 +148,21 @@ function buildLedgerItems({ expenses, flights, stays, activities }) {
 
   const flightItems = flights.map((flight) => {
     const breakdown = getPaymentBreakdown(flight);
-    const identity = [flight.airline, flight.flightNumber].filter(Boolean).join(" ");
-    const route = [flight.from, flight.to].filter(Boolean).join(" -> ");
+    const copy = getFlightLedgerCopy(flight);
 
     return {
       id: flight.id,
       origin: "flight",
       source: "flights",
       originLabel: "Volo",
-      title: identity || route || "Volo",
+      title: copy.title,
       totalAmount: breakdown.totalAmount,
       paidAmount: breakdown.paidAmount,
       dueAmount: breakdown.dueAmount,
       status: breakdown.status,
       date: flight.departureDate || "",
       createdAt: flight.createdAt || "",
-      meta: route || getFlightTypeLabel(flight.type),
+      meta: copy.meta,
       typeLabel: "Trasporto",
       notes: flight.notes || "",
       editable: false
@@ -392,6 +412,33 @@ function fieldError(errors, field) {
   return errors[field] ? `<p class="field-error">${escapeHtml(errors[field])}</p>` : "";
 }
 
+function shouldShowZeroCostWarning(amountValue, status) {
+  const cleanValue = String(amountValue ?? "").trim();
+
+  if (!cleanValue) {
+    return false;
+  }
+
+  const amount = Number(cleanValue);
+  return Number.isFinite(amount) && amount === 0 && ["paid", "partial"].includes(status);
+}
+
+function renderZeroCostWarning(amountValue, status) {
+  const hidden = shouldShowZeroCostWarning(amountValue, status) ? "" : " hidden";
+
+  return `<p class="form-warning" data-zero-cost-warning${hidden}>${ZERO_COST_WARNING_COPY}</p>`;
+}
+
+function updateZeroCostWarning(form) {
+  const warning = form.querySelector("[data-zero-cost-warning]");
+
+  if (!warning) {
+    return;
+  }
+
+  warning.hidden = !shouldShowZeroCostWarning(form.elements.amount?.value, form.elements.status?.value);
+}
+
 function renderExpenseForm({ tripId, expense = null, errors = {}, modeOverride = null } = {}) {
   const mode = modeOverride || (expense?.id ? "edit" : "create");
   const submitLabel = mode === "edit" ? "Salva modifiche" : "Aggiungi spesa";
@@ -444,6 +491,7 @@ function renderExpenseForm({ tripId, expense = null, errors = {}, modeOverride =
           ${fieldError(errors, "paidAmount")}
         </div>
       </div>
+      ${renderZeroCostWarning(expense?.amount ?? "", expense?.status || "unpaid")}
 
       <div class="form-field">
         <label for="expense-date">Data / scadenza pagamento opzionale</label>
@@ -621,6 +669,18 @@ function handleBudgetKeydown(event) {
   }
 }
 
+function handleBudgetFormInput(event) {
+  if (!["amount", "status"].includes(event.target.name)) {
+    return;
+  }
+
+  const form = event.target.closest("#expense-form");
+
+  if (form) {
+    updateZeroCostWarning(form);
+  }
+}
+
 function handleExpenseFormSubmit(event) {
   if (event.target.id !== "expense-form") {
     return;
@@ -666,6 +726,8 @@ function ensureBudgetHandlers() {
   document.addEventListener("focusin", handleBudgetFocus);
   document.addEventListener("beforeinput", handleBudgetBeforeInput);
   document.addEventListener("keydown", handleBudgetKeydown);
+  document.addEventListener("input", handleBudgetFormInput);
+  document.addEventListener("change", handleBudgetFormInput);
   document.addEventListener("submit", handleExpenseFormSubmit);
   budgetHandlersReady = true;
 }

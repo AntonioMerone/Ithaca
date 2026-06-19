@@ -57,6 +57,7 @@ import {
 
 let dashboardHandlersReady = false;
 const DASHBOARD_SECTION_PREVIEW_LIMIT = 3;
+const ZERO_COST_WARNING_COPY = "Costo 0 € con pagamento segnato: controlla se il dato è corretto.";
 const expandedDashboardSections = new Set();
 
 function refreshView() {
@@ -185,12 +186,26 @@ function handleDashboardSubmit(event) {
   }
 }
 
+function handleDashboardFormInput(event) {
+  if (!["cost", "paymentStatus"].includes(event.target.name)) {
+    return;
+  }
+
+  const form = event.target.closest("#flight-form, #stay-form, #activity-form");
+
+  if (form) {
+    updateZeroCostWarning(form);
+  }
+}
+
 function ensureDashboardHandlers() {
   if (dashboardHandlersReady) {
     return;
   }
 
   document.addEventListener("click", handleDashboardClick);
+  document.addEventListener("input", handleDashboardFormInput);
+  document.addEventListener("change", handleDashboardFormInput);
   document.addEventListener("submit", handleDashboardSubmit);
   dashboardHandlersReady = true;
 }
@@ -870,6 +885,33 @@ function fieldError(errors, field) {
   return errors[field] ? `<p class="field-error">${escapeHtml(errors[field])}</p>` : "";
 }
 
+function shouldShowZeroCostWarning(costValue, paymentStatus) {
+  const cleanValue = String(costValue ?? "").trim();
+
+  if (!cleanValue) {
+    return false;
+  }
+
+  const cost = Number(cleanValue);
+  return Number.isFinite(cost) && cost === 0 && ["paid", "partial"].includes(paymentStatus);
+}
+
+function renderZeroCostWarning(costValue, paymentStatus) {
+  const hidden = shouldShowZeroCostWarning(costValue, paymentStatus) ? "" : " hidden";
+
+  return `<p class="form-warning" data-zero-cost-warning${hidden}>${ZERO_COST_WARNING_COPY}</p>`;
+}
+
+function updateZeroCostWarning(form) {
+  const warning = form.querySelector("[data-zero-cost-warning]");
+
+  if (!warning) {
+    return;
+  }
+
+  warning.hidden = !shouldShowZeroCostWarning(form.elements.cost?.value, form.elements.paymentStatus?.value);
+}
+
 function parseOptionalCost(value) {
   const cleanValue = String(value || "").trim();
 
@@ -975,7 +1017,7 @@ function renderFlightForm({ trip, flight = null, errors = {}, modeOverride = nul
       <div class="form-grid">
         <div class="form-field">
           <label for="flight-cost-input">Costo</label>
-          <input id="flight-cost-input" name="cost" type="number" min="0" step="0.01" value="${escapeHtml(flight?.cost || "")}">
+          <input id="flight-cost-input" name="cost" type="number" min="0" step="0.01" value="${escapeHtml(flight?.cost ?? "")}">
           ${fieldError(errors, "cost")}
         </div>
         <div class="form-field">
@@ -989,6 +1031,7 @@ function renderFlightForm({ trip, flight = null, errors = {}, modeOverride = nul
         <input id="flight-paid-amount-input" name="paidAmount" type="number" min="0" step="0.01" value="${escapeHtml(flight?.paidAmount || "")}">
         ${fieldError(errors, "paidAmount")}
       </div>
+      ${renderZeroCostWarning(flight?.cost ?? "", flight?.paymentStatus || "unpaid")}
 
       <div class="form-field">
         <label for="flight-notes-input">Note</label>
@@ -1142,7 +1185,7 @@ function renderStayForm({ trip, stay = null, errors = {}, modeOverride = null } 
       <div class="form-grid">
         <div class="form-field">
           <label for="stay-cost-input">Costo</label>
-          <input id="stay-cost-input" name="cost" type="number" min="0" step="0.01" value="${escapeHtml(stay?.cost || "")}">
+          <input id="stay-cost-input" name="cost" type="number" min="0" step="0.01" value="${escapeHtml(stay?.cost ?? "")}">
           ${fieldError(errors, "cost")}
         </div>
         <div class="form-field">
@@ -1156,6 +1199,7 @@ function renderStayForm({ trip, stay = null, errors = {}, modeOverride = null } 
         <input id="stay-paid-amount-input" name="paidAmount" type="number" min="0" step="0.01" value="${escapeHtml(stay?.paidAmount || "")}">
         ${fieldError(errors, "paidAmount")}
       </div>
+      ${renderZeroCostWarning(stay?.cost ?? "", stay?.paymentStatus || "unpaid")}
 
       <div class="form-field">
         <label for="stay-meals-input">Pasti / note cibo</label>
@@ -1318,7 +1362,7 @@ function renderActivityForm({ trip, activity = null, errors = {}, modeOverride =
       <div class="form-grid">
         <div class="form-field">
           <label for="activity-cost-input">Costo</label>
-          <input id="activity-cost-input" name="cost" type="number" min="0" step="0.01" value="${escapeHtml(activity?.cost || "")}">
+          <input id="activity-cost-input" name="cost" type="number" min="0" step="0.01" value="${escapeHtml(activity?.cost ?? "")}">
           ${fieldError(errors, "cost")}
         </div>
         <div class="form-field">
@@ -1332,6 +1376,7 @@ function renderActivityForm({ trip, activity = null, errors = {}, modeOverride =
         <input id="activity-paid-amount-input" name="paidAmount" type="number" min="0" step="0.01" value="${escapeHtml(activity?.paidAmount || "")}">
         ${fieldError(errors, "paidAmount")}
       </div>
+      ${renderZeroCostWarning(activity?.cost ?? "", activity?.paymentStatus || "unpaid")}
 
       <div class="form-field">
         <label for="activity-notes-input">Note</label>

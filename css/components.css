@@ -178,6 +178,9 @@
 }
 
 .trip-card {
+  --trip-card-accent: var(--color-accent);
+  --trip-card-accent-soft: var(--color-primary);
+
   display: grid;
   position: relative;
   gap: var(--space-4);
@@ -196,8 +199,38 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 0.35rem;
-  background: linear-gradient(180deg, var(--color-accent), var(--color-primary));
+  background: linear-gradient(180deg, var(--trip-card-accent), var(--trip-card-accent-soft));
   content: "";
+}
+
+.trip-card--accent-1 {
+  --trip-card-accent: #1b6b5a;
+  --trip-card-accent-soft: #6fa894;
+}
+
+.trip-card--accent-2 {
+  --trip-card-accent: #b45f45;
+  --trip-card-accent-soft: #d8a08d;
+}
+
+.trip-card--accent-3 {
+  --trip-card-accent: #b58a2a;
+  --trip-card-accent-soft: #dfc36b;
+}
+
+.trip-card--accent-4 {
+  --trip-card-accent: #657a3a;
+  --trip-card-accent-soft: #a8b678;
+}
+
+.trip-card--accent-5 {
+  --trip-card-accent: #496f8f;
+  --trip-card-accent-soft: #91aec3;
+}
+
+.trip-card--accent-6 {
+  --trip-card-accent: #7a5139;
+  --trip-card-accent-soft: #b98d73;
 }
 
 .trip-card:hover {
@@ -710,6 +743,7 @@
 
 .dossier-list {
   display: grid;
+  align-items: start;
   gap: var(--space-3);
 }
 
@@ -719,6 +753,7 @@
 
 .dossier-card {
   display: grid;
+  align-self: start;
   min-width: 0;
   gap: var(--space-3);
   padding: var(--space-3);
@@ -1683,6 +1718,16 @@
   font-weight: 700;
 }
 
+.form-warning {
+  padding: var(--space-3);
+  border: 1px solid rgb(181 138 42 / 34%);
+  border-radius: var(--radius-sm);
+  background: rgb(223 195 107 / 18%);
+  color: #7a5a18;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
 .form-actions {
   display: flex;
   flex-wrap: wrap;
@@ -2047,6 +2092,10 @@
   }
 
   .dossier-sections {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: 1fr;
+  }
+
+  .dossier-list {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
   }
 }

@@ -641,10 +641,19 @@ function renderEmptyState() {
   `;
 }
 
-function renderTripCard(trip) {
+const TRIP_CARD_ACCENT_COUNT = 6;
+
+function getTripBudgetLabel(budget, currency) {
+  return Number(budget.plannedTotal || 0) > 0
+    ? `Totale viaggio ${formatCurrency(budget.plannedTotal, currency)}`
+    : "Nessuna spesa inserita";
+}
+
+function renderTripCard(trip, index = 0) {
   const duration = calculateTripDuration(trip.startDate, trip.endDate);
   const countdown = calculateCountdown(trip.startDate, trip.endDate);
   const destinationCount = normalizeDestinations(trip.destinations).length;
+  const accentClass = `trip-card--accent-${(index % TRIP_CARD_ACCENT_COUNT) + 1}`;
   const budget = calculateDossierBudgetSummary(
     trip,
     getExpensesByTripId(trip.id),
@@ -654,7 +663,7 @@ function renderTripCard(trip) {
   );
 
   return `
-    <article class="trip-card">
+    <article class="trip-card ${accentClass}">
       <a class="trip-card__main" href="#/trip/${encodeURIComponent(trip.id)}" aria-label="Apri ${escapeHtml(trip.name)}">
         <div class="trip-card__topline">
           <span>Dossier viaggio</span>
@@ -668,7 +677,7 @@ function renderTripCard(trip) {
           <span>${duration} giorni</span>
         </div>
         <div class="trip-card__meta-row">
-          <p class="trip-card__budget">Totale viaggio ${formatCurrency(budget.plannedTotal, trip.currency)}</p>
+          <p class="trip-card__budget">${getTripBudgetLabel(budget, trip.currency)}</p>
           <p class="trip-card__destination-count">${destinationCount} ${destinationCount === 1 ? "destinazione" : "destinazioni"}</p>
         </div>
       </a>
@@ -688,7 +697,7 @@ function renderTripList(trips) {
 
   return `
     <section class="trip-list" aria-label="Viaggi salvati">
-      ${trips.map(renderTripCard).join("")}
+      ${trips.map((trip, index) => renderTripCard(trip, index)).join("")}
     </section>
   `;
 }
