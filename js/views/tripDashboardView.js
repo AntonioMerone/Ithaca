@@ -563,7 +563,7 @@ function renderFlightCard(flight, currency) {
   ].filter(Boolean);
 
   return `
-    <article class="dossier-card">
+    <article class="dossier-card dossier-card--flight">
       <div class="dossier-card__topline">
         <p class="dossier-card__eyebrow">${escapeHtml(getFlightTypeLabel(flight.type))}</p>
         ${renderDossierPaymentSummary(flight, currency)}
@@ -592,7 +592,7 @@ function renderStayCard(stay, trip) {
   ].filter(Boolean);
 
   return `
-    <article class="dossier-card">
+    <article class="dossier-card dossier-card--stay">
       <div class="dossier-card__topline">
         <p class="dossier-card__eyebrow">Soggiorno</p>
         ${renderDossierPaymentSummary(stay, trip.currency || "EUR")}
@@ -626,7 +626,7 @@ function renderActivityCard(activity, trip) {
   ].filter(Boolean);
 
   return `
-    <article class="dossier-card">
+    <article class="dossier-card dossier-card--activity">
       <div class="dossier-card__topline">
         <p class="dossier-card__eyebrow">${escapeHtml(getActivityTypeLabel(activity.type))}</p>
         ${renderDossierPaymentSummary(activity, trip.currency || "EUR")}

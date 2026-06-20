@@ -359,7 +359,7 @@ function renderLedgerCard(item, currency) {
   const notes = String(item.notes || "").trim();
 
   return `
-    <article class="expense-card">
+    <article class="expense-card expense-card--${escapeHtml(item.source)}">
       <div class="expense-card__header">
         <p class="expense-card__meta">
           <span>${escapeHtml(item.originLabel)}</span>
