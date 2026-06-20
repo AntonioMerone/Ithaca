@@ -656,7 +656,6 @@ function renderFlightCard(flight, currency) {
     <article class="dossier-card dossier-card--flight">
       <div class="dossier-card__topline">
         <p class="dossier-card__eyebrow">${escapeHtml(getFlightTypeLabel(flight.type))}</p>
-        ${renderDossierPaymentSummary(flight, currency)}
       </div>
       <div class="flight-ticket__route" aria-label="${escapeHtml(route)}">
         <div class="flight-ticket__point">
@@ -672,11 +671,14 @@ function renderFlightCard(flight, currency) {
       ${dateLine ? `<p class="dossier-card__meta flight-ticket__time">${dateLine}</p>` : ""}
       ${flightIdentity ? `<p class="dossier-card__meta flight-ticket__identity">${escapeHtml(flightIdentity)}</p>` : ""}
       ${referenceParts.length ? `<p class="dossier-card__meta flight-ticket__details">${referenceParts.map(escapeHtml).join(" &middot; ")}</p>` : ""}
-      ${renderDossierPartialPayment(flight, currency)}
       ${flight.notes ? `<p class="dossier-card__notes">${escapeHtml(flight.notes)}</p>` : ""}
-      <div class="trip-card__actions" aria-label="Azioni volo">
-        <button class="button button--small button--ghost" type="button" data-action="edit-flight" data-flight-id="${escapeHtml(flight.id)}">Modifica</button>
-        <button class="button button--small button--danger-ghost" type="button" data-action="delete-flight" data-flight-id="${escapeHtml(flight.id)}">Elimina</button>
+      <div class="flight-ticket__footer">
+        ${renderDossierPaymentSummary(flight, currency)}
+        ${renderDossierPartialPayment(flight, currency)}
+        <div class="trip-card__actions" aria-label="Azioni volo">
+          <button class="button button--small button--ghost" type="button" data-action="edit-flight" data-flight-id="${escapeHtml(flight.id)}">Modifica</button>
+          <button class="button button--small button--danger-ghost" type="button" data-action="delete-flight" data-flight-id="${escapeHtml(flight.id)}">Elimina</button>
+        </div>
       </div>
     </article>
   `;

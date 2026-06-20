@@ -74,7 +74,7 @@
 }
 
 .app-main.has-bottom-nav {
-  padding-bottom: calc(var(--bottom-nav-height) + var(--space-8) + var(--space-8) + var(--space-8) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(var(--bottom-nav-height) + var(--space-8) + var(--space-6) + env(safe-area-inset-bottom, 0px));
 }
 
 .page {
@@ -138,12 +138,10 @@
   .page__title {
     font-size: 3rem;
   }
-}
 
-@media (min-width: 820px) {
   .app-main.has-bottom-nav {
-    max-width: 76rem;
-    padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+    max-width: 82rem;
+    padding-bottom: var(--space-8);
   }
 }
 
