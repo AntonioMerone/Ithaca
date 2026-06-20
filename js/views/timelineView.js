@@ -11,6 +11,8 @@ import {
 import {
   TIMELINE_PAYMENT_STATUSES,
   TIMELINE_TYPES,
+  applyTripSeasonTheme,
+  clearTripSeasonTheme,
   escapeHtml,
   formatCurrency,
   formatDate,
@@ -473,8 +475,11 @@ export function renderTimelineView({ params }) {
   const trip = getTripById(params.tripId);
 
   if (!trip) {
+    clearTripSeasonTheme();
     return renderMissingTrip();
   }
+
+  applyTripSeasonTheme(trip.startDate);
 
   const items = sortTimelineItems(getTimelineItemsByTripId(trip.id));
   const activeType = getFilter(trip.id);

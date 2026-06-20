@@ -19,6 +19,7 @@ import {
   calculateDossierBudgetSummary,
   calculateCountdown,
   calculateTripDuration,
+  clearTripSeasonTheme,
   escapeHtml,
   formatCurrency,
   formatDate,
@@ -703,6 +704,7 @@ function renderTripList(trips) {
 }
 
 export function renderHomeView() {
+  clearTripSeasonTheme();
   ensureHomeHandlers();
   const trips = getTrips();
 

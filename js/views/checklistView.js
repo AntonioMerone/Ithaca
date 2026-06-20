@@ -11,7 +11,9 @@ import {
 } from "../storage.js";
 import {
   CHECKLIST_SECTIONS,
+  applyTripSeasonTheme,
   calculateChecklistSummary,
+  clearTripSeasonTheme,
   escapeHtml,
   formatDate,
   getChecklistSectionLabel,
@@ -525,8 +527,11 @@ export function renderChecklistView({ params }) {
   const trip = getTripById(params.tripId);
 
   if (!trip) {
+    clearTripSeasonTheme();
     return renderMissingTrip();
   }
+
+  applyTripSeasonTheme(trip.startDate);
 
   const items = sortChecklistItems(getChecklistItemsByTripId(trip.id));
   const activeFilter = getFilter(trip.id);

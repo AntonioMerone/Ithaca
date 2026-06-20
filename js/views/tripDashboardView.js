@@ -28,11 +28,13 @@ import {
   DOSSIER_PAYMENT_STATUSES,
   FLIGHT_TYPES,
   STAY_TYPES,
+  applyTripSeasonTheme,
   calculateChecklistSummary,
   calculateCountdown,
   calculateDossierBudgetSummary,
   calculateTripDuration,
   calcNights,
+  clearTripSeasonTheme,
   determineTripStatus,
   escapeHtml,
   formatCurrency,
@@ -1482,8 +1484,11 @@ export function renderTripDashboardView({ params }) {
   const trip = getTripById(params.tripId);
 
   if (!trip) {
+    clearTripSeasonTheme();
     return renderMissingTrip();
   }
+
+  applyTripSeasonTheme(trip.startDate);
 
   const encodedTripId = encodeURIComponent(trip.id);
   const basePath = `#/trip/${encodedTripId}`;
