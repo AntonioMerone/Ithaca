@@ -139,3 +139,16 @@
     font-size: 3rem;
   }
 }
+
+@media (min-width: 820px) {
+  .app-main.has-bottom-nav {
+    max-width: 76rem;
+    padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (min-width: 1180px) {
+  .app-main.has-bottom-nav {
+    padding-inline: var(--space-8);
+  }
+}

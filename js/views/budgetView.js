@@ -365,12 +365,14 @@ function renderLedgerCard(item, currency) {
           <span>${escapeHtml(item.originLabel)}</span>
           ${item.typeLabel ? `<span>${escapeHtml(item.typeLabel)}</span>` : ""}
         </p>
+      </div>
+      <div class="expense-card__main">
+        <h2 class="expense-card__title">${escapeHtml(item.title)}</h2>
         <p class="expense-card__status">
           <span class="badge ${getStatusBadgeClass(item.status)}">${escapeHtml(getStatusLabel(item.status))}</span>
           <strong>${formatCurrency(item.totalAmount, currency)}</strong>
         </p>
       </div>
-      <h2 class="expense-card__title">${escapeHtml(item.title)}</h2>
       ${renderLedgerPayment(item, currency)}
       ${item.date ? `<p class="expense-card__date">${getLedgerDateLabel(item)}: ${formatDate(item.date)}</p>` : `<p class="expense-card__date">Senza data</p>`}
       ${item.meta ? `<p class="expense-card__detail">${escapeHtml(item.meta)}</p>` : ""}

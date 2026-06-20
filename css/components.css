@@ -400,11 +400,14 @@
   gap: var(--space-2);
   align-self: end;
   margin-top: auto;
+  padding-top: var(--space-3);
+  border-top: 1px solid rgb(216 201 172 / 64%);
 }
 
 .trip-card__open {
   grid-column: 1 / -1;
   min-width: 0;
+  justify-content: center;
 }
 
 .trip-card__actions .button--small {
@@ -446,7 +449,7 @@
 }
 
 .dashboard-page {
-  gap: var(--space-6);
+  gap: clamp(var(--space-5), 3vw, var(--space-8));
 }
 
 .budget-page {
@@ -487,7 +490,7 @@
   position: relative;
   isolation: isolate;
   display: grid;
-  gap: var(--space-5);
+  gap: clamp(var(--space-5), 3vw, var(--space-8));
   overflow: hidden;
   padding: clamp(var(--space-5), 4vw, var(--space-8));
   border: 1px solid rgb(185 162 124 / 58%);
@@ -529,6 +532,34 @@
 .dashboard-hero > * {
   position: relative;
   z-index: 1;
+}
+
+.dashboard-hero__header {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.dashboard-hero__copy {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.dashboard-hero__route {
+  max-width: 48rem;
+  color: var(--color-primary-strong);
+  font-family: var(--font-display);
+  font-size: clamp(1.06rem, 2vw, 1.36rem);
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: break-word;
+}
+
+.dashboard-hero__aside {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .dashboard-hero__label {
@@ -590,7 +621,8 @@
   max-width: 34rem;
   margin-top: var(--space-3);
   color: var(--color-text-muted);
-  font-size: 1rem;
+  font-size: 1.04rem;
+  line-height: 1.55;
 }
 
 .dashboard-hero__budget {
@@ -612,6 +644,116 @@
 .dashboard-hero__budget .metric-row strong {
   color: var(--color-primary-strong);
   font-family: var(--font-display);
+}
+
+.dashboard-countdown-strip {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid rgb(185 162 124 / 42%);
+  border-radius: var(--radius-sm);
+  background:
+    linear-gradient(135deg, rgb(255 250 240 / 82%), rgb(245 237 213 / 52%)),
+    var(--color-surface-muted);
+}
+
+.dashboard-countdown-strip__count {
+  display: grid;
+  gap: var(--space-1);
+  align-content: start;
+  min-width: 8rem;
+}
+
+.dashboard-countdown-strip__count span {
+  color: var(--color-primary);
+  font-family: var(--font-display);
+  font-size: clamp(2.6rem, 12vw, 4.8rem);
+  font-weight: 700;
+  line-height: 0.85;
+  text-transform: uppercase;
+}
+
+.dashboard-countdown-strip__count strong {
+  color: var(--color-primary-strong);
+  font-size: 0.92rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dashboard-countdown-strip__count em {
+  width: fit-content;
+  padding: 0.24rem 0.5rem;
+  border-radius: 999px;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.dashboard-countdown-strip__details {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.dashboard-countdown-strip__row {
+  display: grid;
+  gap: 0.15rem;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid rgb(185 162 124 / 34%);
+}
+
+.dashboard-countdown-strip__row:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.dashboard-countdown-strip__row span {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.dashboard-countdown-strip__row strong {
+  color: var(--color-primary-strong);
+  font-weight: 900;
+  line-height: 1.3;
+  overflow-wrap: break-word;
+}
+
+.dashboard-budget-row {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.dashboard-budget-row__item {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid rgb(185 162 124 / 38%);
+  border-radius: var(--radius-sm);
+  background: rgb(255 250 240 / 72%);
+}
+
+.dashboard-budget-row__item span {
+  color: var(--color-text-muted);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dashboard-budget-row__item strong {
+  color: var(--color-primary-strong);
+  font-family: var(--font-display);
+  font-size: clamp(1.05rem, 3vw, 1.4rem);
+  font-weight: 700;
+  overflow-wrap: break-word;
 }
 
 .destinations-section {
@@ -830,9 +972,9 @@
 
 .dossier-section {
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-4);
   width: 100%;
-  padding: var(--space-4);
+  padding: clamp(var(--space-4), 2.5vw, var(--space-6));
   border: 1px solid rgb(216 201 172 / 82%);
   border-radius: var(--radius-md);
   background:
@@ -849,8 +991,8 @@
 .dossier-list {
   display: grid;
   align-items: start;
-  gap: var(--space-3);
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 21rem), 1fr));
 }
 
 .dossier-section__toggle {
@@ -861,8 +1003,8 @@
   display: grid;
   align-self: start;
   min-width: 0;
-  gap: var(--space-3);
-  padding: var(--space-4);
+  gap: var(--space-4);
+  padding: clamp(var(--space-4), 2vw, var(--space-5));
   border: 1px solid rgb(216 201 172 / 82%);
   border-radius: var(--radius-sm);
   background:
@@ -881,7 +1023,7 @@
 }
 
 .dossier-card--flight {
-  gap: var(--space-2);
+  gap: var(--space-3);
   border-style: solid;
   border-top-style: dashed;
   background:
@@ -899,7 +1041,7 @@
   color: var(--color-gold);
   content: "BOARDING PASS";
   font-family: var(--font-mono);
-  font-size: 0.66rem;
+  font-size: 0.7rem;
   font-weight: 900;
   letter-spacing: 0.12em;
 }
@@ -910,9 +1052,70 @@
   letter-spacing: 0.02em;
 }
 
+.flight-ticket__route {
+  display: grid;
+  align-items: center;
+  gap: var(--space-4);
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  padding: var(--space-4) 0;
+  border-top: 1px dashed rgb(185 162 124 / 54%);
+  border-bottom: 1px dashed rgb(185 162 124 / 54%);
+}
+
+.flight-ticket__point {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.flight-ticket__point span {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.flight-ticket__point strong {
+  color: var(--color-primary-strong);
+  font-family: var(--font-mono);
+  font-size: clamp(1.08rem, 2.2vw, 1.45rem);
+  line-height: 1.2;
+  overflow-wrap: break-word;
+}
+
+.flight-ticket__arrow {
+  display: grid;
+  width: 2.2rem;
+  height: 2.2rem;
+  place-items: center;
+  border: 1px solid rgb(185 162 124 / 44%);
+  border-radius: 50%;
+  background: rgb(255 250 240 / 78%);
+  color: var(--color-gold);
+  font-weight: 900;
+}
+
+.flight-ticket__time {
+  color: var(--color-primary);
+  font-size: 0.95rem;
+  font-weight: 900;
+}
+
 .dossier-card--flight .dossier-card__meta {
   font-family: var(--font-mono);
-  font-size: 0.82rem;
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.flight-ticket__identity {
+  color: var(--color-primary-strong);
+  font-weight: 900;
+}
+
+.flight-ticket__details {
+  padding-top: var(--space-2);
+  border-top: 1px dashed rgb(185 162 124 / 38%);
 }
 
 .dossier-card--flight .dossier-card__payment {
@@ -932,6 +1135,37 @@
   letter-spacing: 0.14em;
 }
 
+.stay-document__dates {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.stay-document__date-block {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid rgb(216 201 172 / 72%);
+  border-radius: var(--radius-sm);
+  background: rgb(255 250 240 / 64%);
+}
+
+.stay-document__date-block span {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.stay-document__date-block strong {
+  color: var(--color-primary-strong);
+  font-size: 0.98rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
 .dossier-card--activity {
   gap: var(--space-2);
   padding-block: var(--space-3);
@@ -939,17 +1173,31 @@
 }
 
 .dossier-card--activity::before {
-  width: 1.45rem;
-  height: 1.45rem;
+  width: 3.5rem;
+  height: 0.16rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-gold), transparent);
+  content: "";
+}
+
+.activity-document__body {
+  display: grid;
+  align-items: start;
+  gap: var(--space-3);
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.activity-document__stamp {
+  display: grid;
+  width: 2.35rem;
+  height: 2.35rem;
+  place-items: center;
   border: 1px solid rgb(184 134 11 / 34%);
   border-radius: 50%;
   background: rgb(245 237 213 / 68%);
   color: var(--color-gold);
-  content: "A";
-  display: grid;
-  place-items: center;
   font-family: var(--font-display);
-  font-size: 0.78rem;
+  font-size: 0.9rem;
   font-weight: 700;
 }
 
@@ -970,7 +1218,7 @@
 .dossier-card__eyebrow {
   min-width: 0;
   color: var(--color-gold);
-  font-size: 0.72rem;
+  font-size: 0.76rem;
   font-weight: 900;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -980,7 +1228,7 @@
 .dossier-card__title {
   color: var(--color-primary-strong);
   font-family: var(--font-display);
-  font-size: 1.1rem;
+  font-size: clamp(1.12rem, 1.5vw, 1.28rem);
   font-weight: 700;
   line-height: 1.25;
   overflow-wrap: break-word;
@@ -990,7 +1238,8 @@
 .dossier-card__meta,
 .dossier-card__notes {
   color: var(--color-text-muted);
-  font-size: 0.9rem;
+  font-size: 0.94rem;
+  line-height: 1.5;
   overflow-wrap: anywhere;
 }
 
@@ -1005,12 +1254,13 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
-  justify-content: flex-end;
+  justify-content: flex-start;
   min-width: 0;
 }
 
 .dossier-card__payment strong {
   color: var(--color-primary-strong);
+  font-size: 1rem;
   font-weight: 900;
   white-space: nowrap;
 }
@@ -1022,11 +1272,12 @@
 }
 
 .dossier-card .trip-card__actions {
-  width: fit-content;
-  grid-template-columns: repeat(2, max-content);
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, max-content));
   justify-content: start;
   gap: var(--space-2);
-  margin-top: var(--space-1);
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
 }
 
 .dossier-card .trip-card__actions .button {
@@ -2167,6 +2418,63 @@
   box-shadow: 0 0.75rem 1.5rem var(--color-shadow);
 }
 
+@media (max-width: 430px) {
+  .flight-ticket__route {
+    gap: var(--space-2);
+  }
+
+  .flight-ticket__point strong {
+    font-size: 1rem;
+  }
+
+  .flight-ticket__arrow {
+    width: 1.85rem;
+    height: 1.85rem;
+  }
+
+  .stay-document__dates {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 720px) {
+  .bottom-nav {
+    right: 0;
+    bottom: 0;
+    left: 0;
+    max-width: none;
+    min-height: 3.45rem;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 0;
+    background:
+      linear-gradient(180deg, rgb(255 250 240 / 84%), rgb(247 239 223 / 94%)),
+      var(--color-surface);
+    box-shadow: 0 -0.45rem 1.3rem rgb(64 51 31 / 10%);
+  }
+
+  .bottom-nav__link {
+    min-height: 3.25rem;
+    grid-auto-flow: column;
+    grid-template-columns: auto auto;
+    justify-content: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border-radius: 0;
+    font-size: 0.78rem;
+  }
+
+  .bottom-nav__link[aria-current="page"]::before {
+    top: auto;
+    bottom: 0.35rem;
+  }
+
+  .toast-root {
+    bottom: calc(3.45rem + var(--space-4) + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -2309,16 +2617,25 @@
   }
 
   .dashboard-hero {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: end;
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .dashboard-hero__budget {
-    min-width: 16rem;
-    padding-top: 0;
-    padding-left: var(--space-5);
-    border-top: 0;
-    border-left: 1px solid var(--color-border);
+  .dashboard-hero__header,
+  .dashboard-countdown-strip {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+
+  .dashboard-hero__aside {
+    justify-content: end;
+  }
+
+  .dashboard-countdown-strip__details {
+    min-width: min(24rem, 42vw);
+  }
+
+  .dashboard-budget-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .dashboard-grid {
@@ -2423,6 +2740,6 @@
   }
 
   .dossier-list {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 25rem), 1fr));
   }
 }

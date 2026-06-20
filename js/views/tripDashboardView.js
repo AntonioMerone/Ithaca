@@ -383,6 +383,95 @@ function renderTripNotes(notes) {
   return `<p class="dashboard-note">${escapeHtml(cleanNotes)}</p>`;
 }
 
+function renderDashboardInfoRow(label, value) {
+  if (!value) {
+    return "";
+  }
+
+  return `
+    <div class="dashboard-countdown-strip__row">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}</strong>
+    </div>
+  `;
+}
+
+function renderDashboardCountdownStrip({ trip, status, statusLabel, timelineItems, checklistItems, flights, stays }) {
+  const sortedFlights = sortByDateTime(flights, "departureDate", "departureTime");
+  const sortedStays = sortByDateTime(stays, "checkInDate");
+  const nextTimelineItem = getNextTimelineItem(sortTimelineItems(timelineItems));
+  const checklistSummary = calculateChecklistSummary(checklistItems);
+  const firstFlight = sortedFlights[0] || null;
+  const firstStay = sortedStays[0] || null;
+  const firstFlightRoute = firstFlight ? [firstFlight.from, firstFlight.to].filter(Boolean).join(" -> ") : "";
+  const firstStayLabel = firstStay ? firstStay.structureName || getDestinationName(trip.destinations, firstStay.destinationId) : "";
+
+  return `
+    <section class="dashboard-countdown-strip" aria-label="Sintesi operativa viaggio">
+      <div class="dashboard-countdown-strip__count">
+        <span>${escapeHtml(getCountdownNumber(status, trip.startDate))}</span>
+        <strong>${escapeHtml(getCountdownCaption(status))}</strong>
+        <em>${escapeHtml(statusLabel)}</em>
+      </div>
+      <div class="dashboard-countdown-strip__details">
+        ${renderDashboardInfoRow("Partenza", trip.startDate ? formatDate(trip.startDate) : "")}
+        ${renderDashboardInfoRow("Primo volo", firstFlightRoute)}
+        ${renderDashboardInfoRow("Primo soggiorno", firstStayLabel)}
+        ${renderDashboardInfoRow("Prossima tappa", nextTimelineItem?.title || "")}
+        ${checklistItems.length ? renderDashboardInfoRow("Checklist", `${checklistSummary.completionRate}% pronta`) : ""}
+      </div>
+    </section>
+  `;
+}
+
+function renderDashboardBudgetRow(budget, currency) {
+  return `
+    <section class="dashboard-budget-row" aria-label="Riepilogo economico viaggio">
+      <article class="dashboard-budget-row__item">
+        <span>Totale viaggio</span>
+        <strong>${formatCurrency(budget.plannedTotal, currency)}</strong>
+      </article>
+      <article class="dashboard-budget-row__item">
+        <span>Gia pagato</span>
+        <strong>${formatCurrency(budget.paidTotal, currency)}</strong>
+      </article>
+      <article class="dashboard-budget-row__item">
+        <span>Da pagare</span>
+        <strong>${formatCurrency(budget.unpaidTotal, currency)}</strong>
+      </article>
+    </section>
+  `;
+}
+
+function renderDashboardHero({ trip, destinations, duration, countdown, status, statusLabel, budget, timelineItems, checklistItems, flights, stays }) {
+  const currency = trip.currency || "EUR";
+
+  return `
+    <header class="dashboard-hero">
+      <div class="dashboard-hero__header">
+        <div class="dashboard-hero__copy">
+          <p class="dashboard-hero__label">Dashboard viaggio</p>
+          <h1 class="page__title" id="trip-title">${escapeHtml(trip.name)}</h1>
+          <p class="dashboard-hero__route">${destinations}</p>
+          <div class="dashboard-hero__meta">
+            <span>${formatDate(trip.startDate)} - ${formatDate(trip.endDate)}</span>
+            <span>${duration} giorni</span>
+            <span>${escapeHtml(countdown)}</span>
+          </div>
+          <p class="dashboard-hero__message">${getHeroMessage(status)}</p>
+          ${renderTripNotes(trip.notes)}
+        </div>
+        <div class="dashboard-hero__aside">
+          <span class="status-pill">${escapeHtml(statusLabel)}</span>
+          <button class="button button--ghost button--small" type="button" data-action="edit-dashboard-trip" data-trip-id="${escapeHtml(trip.id)}">Modifica viaggio</button>
+        </div>
+      </div>
+      ${renderDashboardCountdownStrip({ trip, status, statusLabel, timelineItems, checklistItems, flights, stays })}
+      ${renderDashboardBudgetRow(budget, currency)}
+    </header>
+  `;
+}
+
 function renderSectionWidget({ title, body, href, cta }) {
   return `
     <article class="dashboard-widget">
@@ -547,6 +636,8 @@ function getDestinationName(destinations, destinationId) {
 }
 
 function renderFlightCard(flight, currency) {
+  const from = flight.from || "Da definire";
+  const to = flight.to || "Da definire";
   const route = [flight.from, flight.to].filter(Boolean).map(escapeHtml).join(" &rarr; ") || "Tratta da completare";
   const flightIdentity = [
     flight.airline,
@@ -557,7 +648,6 @@ function renderFlightCard(flight, currency) {
     flight.arrivalDate ? `${formatDate(flight.arrivalDate)}${flight.arrivalTime ? ` ${escapeHtml(flight.arrivalTime)}` : ""}` : ""
   ].filter(Boolean).join(" &rarr; ");
   const referenceParts = [
-    flightIdentity,
     flight.bookingNumber ? `Prenotazione ${flight.bookingNumber}` : "",
     flight.baggage ? `Bagaglio: ${flight.baggage}` : ""
   ].filter(Boolean);
@@ -568,9 +658,20 @@ function renderFlightCard(flight, currency) {
         <p class="dossier-card__eyebrow">${escapeHtml(getFlightTypeLabel(flight.type))}</p>
         ${renderDossierPaymentSummary(flight, currency)}
       </div>
-      <h3 class="dossier-card__title">${route}</h3>
-      ${dateLine ? `<p class="dossier-card__meta">${dateLine}</p>` : ""}
-      ${referenceParts.length ? `<p class="dossier-card__meta">${referenceParts.map(escapeHtml).join(" &middot; ")}</p>` : ""}
+      <div class="flight-ticket__route" aria-label="${escapeHtml(route)}">
+        <div class="flight-ticket__point">
+          <span>Da</span>
+          <strong>${escapeHtml(from)}</strong>
+        </div>
+        <span class="flight-ticket__arrow" aria-hidden="true">&rarr;</span>
+        <div class="flight-ticket__point">
+          <span>A</span>
+          <strong>${escapeHtml(to)}</strong>
+        </div>
+      </div>
+      ${dateLine ? `<p class="dossier-card__meta flight-ticket__time">${dateLine}</p>` : ""}
+      ${flightIdentity ? `<p class="dossier-card__meta flight-ticket__identity">${escapeHtml(flightIdentity)}</p>` : ""}
+      ${referenceParts.length ? `<p class="dossier-card__meta flight-ticket__details">${referenceParts.map(escapeHtml).join(" &middot; ")}</p>` : ""}
       ${renderDossierPartialPayment(flight, currency)}
       ${flight.notes ? `<p class="dossier-card__notes">${escapeHtml(flight.notes)}</p>` : ""}
       <div class="trip-card__actions" aria-label="Azioni volo">
@@ -584,7 +685,6 @@ function renderFlightCard(flight, currency) {
 function renderStayCard(stay, trip) {
   const destinationName = getDestinationName(trip.destinations, stay.destinationId);
   const title = stay.structureName || "Soggiorno da completare";
-  const range = [stay.checkInDate ? formatDate(stay.checkInDate) : "", stay.checkOutDate ? formatDate(stay.checkOutDate) : ""].filter(Boolean).join(" &rarr; ");
   const referenceParts = [
     destinationName ? `Destinazione: ${destinationName}` : "",
     `Tipo: ${getStayTypeLabel(stay.structureType)}`,
@@ -598,7 +698,16 @@ function renderStayCard(stay, trip) {
         ${renderDossierPaymentSummary(stay, trip.currency || "EUR")}
       </div>
       <h3 class="dossier-card__title">${escapeHtml(title)}</h3>
-      ${range ? `<p class="dossier-card__meta">${range}</p>` : ""}
+      <div class="stay-document__dates">
+        <div class="stay-document__date-block">
+          <span>Check-in</span>
+          <strong>${stay.checkInDate ? formatDate(stay.checkInDate) : "Da definire"}</strong>
+        </div>
+        <div class="stay-document__date-block">
+          <span>Check-out</span>
+          <strong>${stay.checkOutDate ? formatDate(stay.checkOutDate) : "Da definire"}</strong>
+        </div>
+      </div>
       ${referenceParts.length ? `<p class="dossier-card__meta">${referenceParts.map(escapeHtml).join(" &middot; ")}</p>` : ""}
       ${stay.mealsNotes ? `<p class="dossier-card__meta">${escapeHtml(stay.mealsNotes)}</p>` : ""}
       ${renderDossierPartialPayment(stay, trip.currency || "EUR")}
@@ -631,8 +740,13 @@ function renderActivityCard(activity, trip) {
         <p class="dossier-card__eyebrow">${escapeHtml(getActivityTypeLabel(activity.type))}</p>
         ${renderDossierPaymentSummary(activity, trip.currency || "EUR")}
       </div>
-      <h3 class="dossier-card__title">${escapeHtml(title)}</h3>
-      ${dateLine ? `<p class="dossier-card__meta">${dateLine}</p>` : ""}
+      <div class="activity-document__body">
+        <span class="activity-document__stamp" aria-hidden="true">A</span>
+        <div>
+          <h3 class="dossier-card__title">${escapeHtml(title)}</h3>
+          ${dateLine ? `<p class="dossier-card__meta">${dateLine}</p>` : ""}
+        </div>
+      </div>
       ${referenceParts.length ? `<p class="dossier-card__meta">${referenceParts.map(escapeHtml).join(" &middot; ")}</p>` : ""}
       ${renderDossierPartialPayment(activity, trip.currency || "EUR")}
       ${activity.notes ? `<p class="dossier-card__notes">${escapeHtml(activity.notes)}</p>` : ""}
@@ -1509,29 +1623,7 @@ export function renderTripDashboardView({ params }) {
 
   return `
     <section class="page dashboard-page" data-dashboard-trip-id="${escapeHtml(trip.id)}" aria-labelledby="trip-title">
-      <header class="dashboard-hero">
-        <div>
-          <p class="dashboard-hero__label">Dashboard viaggio</p>
-          <h1 class="page__title" id="trip-title">${escapeHtml(trip.name)}</h1>
-          <p class="page__summary">${destinations}</p>
-          <div class="dashboard-hero__meta">
-            <span>${formatDate(trip.startDate)} - ${formatDate(trip.endDate)}</span>
-            <span>${duration} giorni</span>
-            <span>${escapeHtml(countdown)}</span>
-            <span>${escapeHtml(statusLabel)}</span>
-          </div>
-          <p class="dashboard-hero__message">${getHeroMessage(status)}</p>
-          ${renderTripNotes(trip.notes)}
-        </div>
-        <div class="dashboard-hero__budget">
-          <div class="metric-list">
-            ${renderMetric("Totale viaggio", formatCurrency(budget.plannedTotal, trip.currency))}
-            ${renderMetric("Gia pagato", formatCurrency(budget.paidTotal, trip.currency))}
-            ${renderMetric("Da pagare", formatCurrency(budget.unpaidTotal, trip.currency))}
-          </div>
-          <button class="button button--ghost button--small" type="button" data-action="edit-dashboard-trip" data-trip-id="${escapeHtml(trip.id)}">Modifica viaggio</button>
-        </div>
-      </header>
+      ${renderDashboardHero({ trip, destinations, duration, countdown, status, statusLabel, budget, timelineItems, checklistItems, flights, stays })}
 
       ${renderDestinationsSection(normalizedDestinations, trip.currency)}
       ${renderDossierSections(trip, flights, stays, activities)}
