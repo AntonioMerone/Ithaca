@@ -4,13 +4,13 @@ html {
 
 body {
   background:
-    var(--season-texture),
-    radial-gradient(circle at 16% 0%, rgb(184 79 45 / 8%), transparent 22rem),
-    radial-gradient(circle at 88% 8%, rgb(45 107 82 / 7%), transparent 20rem),
-    linear-gradient(90deg, rgb(33 29 23 / 2%) 1px, transparent 1px),
-    linear-gradient(180deg, rgb(255 250 240 / 94%), rgb(243 234 219 / 97%)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cg fill='none' stroke='%23c8bfa8' stroke-opacity='.12' stroke-width='.7'%3E%3Cpath d='M0 18h72M0 54h72M18 0v72M54 0v72'/%3E%3C/g%3E%3Cg fill='%23b8860b' fill-opacity='.055'%3E%3Ccircle cx='18' cy='18' r='1'/%3E%3Ccircle cx='54' cy='54' r='1'/%3E%3C/g%3E%3C/svg%3E"),
+    radial-gradient(circle at 16% 0%, rgb(184 134 11 / 5%), transparent 22rem),
+    radial-gradient(circle at 88% 8%, rgb(27 58 45 / 5%), transparent 20rem),
+    linear-gradient(90deg, rgb(26 20 16 / 1.5%) 1px, transparent 1px),
+    linear-gradient(180deg, rgb(253 250 245 / 94%), rgb(247 243 236 / 97%)),
     var(--color-bg);
-  background-size: var(--season-texture-size), auto, auto, 18px 18px, auto, auto;
+  background-size: 72px 72px, auto, auto, 18px 18px, auto, auto;
   color: var(--color-text);
   font-family: var(--font-body);
   line-height: 1.5;

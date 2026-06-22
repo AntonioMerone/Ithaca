@@ -14,9 +14,7 @@ import {
 import {
   EXPENSE_CATEGORIES,
   EXPENSE_STATUSES,
-  applyTripSeasonTheme,
   calculateDossierBudgetSummary,
-  clearTripSeasonTheme,
   escapeHtml,
   formatCurrency,
   formatDate,
@@ -742,11 +740,8 @@ export function renderBudgetView({ params }) {
   const trip = getTripById(params.tripId);
 
   if (!trip) {
-    clearTripSeasonTheme();
     return renderMissingTrip();
   }
-
-  applyTripSeasonTheme(trip.startDate);
 
   const expenses = getExpensesByTripId(trip.id);
   const flights = getFlightsByTripId(trip.id);

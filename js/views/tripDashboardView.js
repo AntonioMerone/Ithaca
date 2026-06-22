@@ -28,13 +28,11 @@ import {
   DOSSIER_PAYMENT_STATUSES,
   FLIGHT_TYPES,
   STAY_TYPES,
-  applyTripSeasonTheme,
   calculateChecklistSummary,
   calculateCountdown,
   calculateDossierBudgetSummary,
   calculateTripDuration,
   calcNights,
-  clearTripSeasonTheme,
   determineTripStatus,
   escapeHtml,
   formatCurrency,
@@ -390,8 +388,8 @@ function renderDashboardInfoRow(label, value) {
 
   return `
     <div class="dashboard-countdown-strip__row">
-      <span>${escapeHtml(label)}</span>
-      <strong>${escapeHtml(value)}</strong>
+      <span class="dashboard-countdown-strip__dot" aria-hidden="true"></span>
+      <span>${escapeHtml(label)} <strong>${escapeHtml(value)}</strong></span>
     </div>
   `;
 }
@@ -411,8 +409,8 @@ function renderDashboardCountdownStrip({ trip, status, statusLabel, timelineItem
       <div class="dashboard-countdown-strip__count">
         <span>${escapeHtml(getCountdownNumber(status, trip.startDate))}</span>
         <strong>${escapeHtml(getCountdownCaption(status))}</strong>
-        <em>${escapeHtml(statusLabel)}</em>
       </div>
+      <div class="dashboard-countdown-strip__separator" aria-hidden="true"></div>
       <div class="dashboard-countdown-strip__details">
         ${renderDashboardInfoRow("Partenza", trip.startDate ? formatDate(trip.startDate) : "")}
         ${renderDashboardInfoRow("Primo volo", firstFlightRoute)}
@@ -454,15 +452,29 @@ function renderDashboardHero({ trip, destinations, duration, countdown, status, 
           <h1 class="page__title" id="trip-title">${escapeHtml(trip.name)}</h1>
           <p class="dashboard-hero__route">${destinations}</p>
           <div class="dashboard-hero__meta">
+            <span class="dashboard-hero__meta-hot">${escapeHtml(countdown)}</span>
             <span>${formatDate(trip.startDate)} - ${formatDate(trip.endDate)}</span>
             <span>${duration} giorni</span>
-            <span>${escapeHtml(countdown)}</span>
+            <span>${escapeHtml(statusLabel)}</span>
           </div>
           <p class="dashboard-hero__message">${getHeroMessage(status)}</p>
           ${renderTripNotes(trip.notes)}
         </div>
         <div class="dashboard-hero__aside">
-          <span class="status-pill">${escapeHtml(statusLabel)}</span>
+          <div class="dashboard-hero__metrics" aria-label="Metriche economiche viaggio">
+            <div class="dashboard-hero__metric">
+              <span>Totale viaggio</span>
+              <strong>${formatCurrency(budget.plannedTotal, currency)}</strong>
+            </div>
+            <div class="dashboard-hero__metric dashboard-hero__metric--paid">
+              <span>Gia pagato</span>
+              <strong>${formatCurrency(budget.paidTotal, currency)}</strong>
+            </div>
+            <div class="dashboard-hero__metric dashboard-hero__metric--due">
+              <span>Da pagare</span>
+              <strong>${formatCurrency(budget.unpaidTotal, currency)}</strong>
+            </div>
+          </div>
           <button class="button button--ghost button--small" type="button" data-action="edit-dashboard-trip" data-trip-id="${escapeHtml(trip.id)}">Modifica viaggio</button>
         </div>
       </div>
@@ -543,6 +555,76 @@ function renderChecklistWidget(items, basePath) {
       ` : `<p class="dashboard-widget__body">Tutti i task sono completati.</p>`}
       <a class="button button--ghost button--small" href="${basePath}/checklist">Vai alla checklist &rarr;</a>
     </article>
+  `;
+}
+
+function renderDashboardWidgets({ trip, status, budget, timelineItems, notes, basePath }) {
+  const sortedTimelineItems = sortTimelineItems(timelineItems);
+  const nextItem = getNextTimelineItem(sortedTimelineItems);
+  const sortedNotes = sortNotes(notes);
+  const latestNote = sortedNotes[0] || null;
+
+  return `
+    <section class="dashboard-widget-grid" aria-label="Riepilogo dossier">
+      <article class="dashboard-widget">
+        <p class="dashboard-widget__label">Partenza</p>
+        <h2 class="dashboard-widget__title">${escapeHtml(getCountdownNumber(status, trip.startDate))}</h2>
+        <p class="dashboard-widget__body">${escapeHtml(getCountdownCaption(status))}</p>
+        <a class="button button--ghost button--small" href="${basePath}/timeline">Apri timeline &rarr;</a>
+      </article>
+      <article class="dashboard-widget">
+        <p class="dashboard-widget__label">Budget</p>
+        <h2 class="dashboard-widget__title">${formatCurrency(budget.plannedTotal, trip.currency || "EUR")}</h2>
+        <p class="dashboard-widget__body">Registro spese e pagamenti del viaggio.</p>
+        <a class="button button--ghost button--small" href="${basePath}/budget">Apri budget &rarr;</a>
+      </article>
+      <article class="dashboard-widget">
+        <p class="dashboard-widget__label">Timeline</p>
+        <h2 class="dashboard-widget__title">${sortedTimelineItems.length === 1 ? "1 tappa" : `${sortedTimelineItems.length} tappe`}</h2>
+        ${nextItem ? `<p class="dashboard-widget__body">${escapeHtml(nextItem.title)}${nextItem.date ? ` &middot; ${formatDate(nextItem.date)}` : ""}</p>` : `<p class="dashboard-widget__body">Nessuna tappa inserita.</p>`}
+        <a class="button button--ghost button--small" href="${basePath}/timeline">Vai alla timeline &rarr;</a>
+      </article>
+      <article class="dashboard-widget">
+        <p class="dashboard-widget__label">Note</p>
+        <h2 class="dashboard-widget__title">${sortedNotes.length === 1 ? "1 nota" : `${sortedNotes.length} note`}</h2>
+        ${latestNote ? `<p class="dashboard-widget__body">${escapeHtml(getNotePreview(latestNote.content, 80))}</p>` : `<p class="dashboard-widget__body">Nessuna nota inserita.</p>`}
+        <a class="button button--ghost button--small" href="${basePath}/notes">Vai alle note &rarr;</a>
+      </article>
+    </section>
+  `;
+}
+
+function renderChecklistPreview(items, basePath) {
+  const summary = calculateChecklistSummary(items);
+  const previewItems = items.slice(0, 4);
+
+  return `
+    <section class="dashboard-checklist-preview" aria-labelledby="dashboard-checklist-title">
+      <header class="dashboard-checklist-preview__header">
+        <div>
+          <p class="page__eyebrow">Checklist</p>
+          <h2 class="panel__title" id="dashboard-checklist-title">${summary.completionRate}% completata</h2>
+        </div>
+        <span>${summary.completed}/${summary.total} completati</span>
+      </header>
+      <div class="budget-progress checklist-widget-progress" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${summary.completionRate}">
+        <span style="width: ${summary.completionRate}%"></span>
+      </div>
+      ${previewItems.length ? `
+        <div class="dashboard-checklist-preview__items">
+          ${previewItems.map((item) => `
+            <article class="dashboard-checklist-preview__item ${item.completed ? "is-completed" : ""}">
+              <span class="dashboard-checklist-preview__check" aria-hidden="true"></span>
+              <div>
+                <strong>${escapeHtml(item.title)}</strong>
+                ${item.dueDate ? `<p>${formatDate(item.dueDate)}</p>` : ""}
+              </div>
+            </article>
+          `).join("")}
+        </div>
+      ` : `<p class="dashboard-widget__body">Checklist non ancora configurata.</p>`}
+      <a class="button button--ghost button--small" href="${basePath}/checklist">Apri checklist &rarr;</a>
+    </section>
   `;
 }
 
@@ -1600,11 +1682,8 @@ export function renderTripDashboardView({ params }) {
   const trip = getTripById(params.tripId);
 
   if (!trip) {
-    clearTripSeasonTheme();
     return renderMissingTrip();
   }
-
-  applyTripSeasonTheme(trip.startDate);
 
   const encodedTripId = encodeURIComponent(trip.id);
   const basePath = `#/trip/${encodedTripId}`;
@@ -1630,33 +1709,8 @@ export function renderTripDashboardView({ params }) {
       ${renderDestinationsSection(normalizedDestinations, trip.currency)}
       ${renderDossierSections(trip, flights, stays, activities)}
       ${renderDossierRecap({ timelineItems, flights, stays, activities })}
-
-      <section class="dashboard-grid" aria-label="Widget principali">
-        <article class="dashboard-widget dashboard-widget--accent">
-          <p class="dashboard-widget__label">Partenza</p>
-          <p class="dashboard-widget__number">${escapeHtml(getCountdownNumber(status, trip.startDate))}</p>
-          <p class="dashboard-widget__body">${escapeHtml(getCountdownCaption(status))}</p>
-          <span class="status-pill">${escapeHtml(statusLabel)}</span>
-        </article>
-
-        <article class="dashboard-widget">
-          <p class="dashboard-widget__label">Budget</p>
-          <h2 class="dashboard-widget__title">Totale viaggio</h2>
-          <p class="dashboard-widget__body">Registro spese e pagamenti del viaggio.</p>
-          <div class="metric-list">
-            ${renderMetric("Totale viaggio", formatCurrency(budget.plannedTotal, trip.currency))}
-            ${renderMetric("Gia pagato", formatCurrency(budget.paidTotal, trip.currency))}
-            ${renderMetric("Da pagare", formatCurrency(budget.unpaidTotal, trip.currency))}
-          </div>
-          <a class="button button--ghost button--small" href="${basePath}/budget">Apri budget &rarr;</a>
-        </article>
-
-        ${renderTimelineWidget(timelineItems, basePath)}
-
-        ${renderChecklistWidget(checklistItems, basePath)}
-
-        ${renderNotesWidget(notes, basePath)}
-      </section>
+      ${renderDashboardWidgets({ trip, status, budget, timelineItems, notes, basePath })}
+      ${renderChecklistPreview(checklistItems, basePath)}
     </section>
   `;
 }

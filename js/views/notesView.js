@@ -9,8 +9,6 @@ import {
   updateNote
 } from "../storage.js";
 import {
-  applyTripSeasonTheme,
-  clearTripSeasonTheme,
   escapeHtml,
   filterNotesByDestination,
   formatDate,
@@ -429,11 +427,8 @@ export function renderNotesView({ params }) {
   const trip = getTripById(params.tripId);
 
   if (!trip) {
-    clearTripSeasonTheme();
     return renderMissingTrip();
   }
-
-  applyTripSeasonTheme(trip.startDate);
 
   const notes = sortNotes(getNotesByTripId(trip.id));
   const filters = getFilters(trip.id);

@@ -44,44 +44,6 @@ export const STAY_TYPES = ["hotel", "appartamento", "bnb", "ostello", "resort", 
 
 export const ACTIVITY_TYPES = ["escursione", "visita", "ristorante", "trasporto", "altro"];
 
-export function getTripSeason(startDate) {
-  if (!startDate) {
-    return null;
-  }
-
-  const value = String(startDate);
-  const month = Number(value.slice(5, 7));
-
-  if (!Number.isInteger(month) || month < 1 || month > 12) {
-    return null;
-  }
-
-  if (month >= 6 && month <= 8) return "summer";
-  if (month >= 9 && month <= 11) return "autumn";
-  if (month === 12 || month <= 2) return "winter";
-  return "spring";
-}
-
-export function applyTripSeasonTheme(startDate) {
-  const season = getTripSeason(startDate);
-
-  if (typeof document === "undefined") {
-    return;
-  }
-
-  if (season) {
-    document.documentElement.setAttribute("data-season", season);
-  } else {
-    document.documentElement.removeAttribute("data-season");
-  }
-}
-
-export function clearTripSeasonTheme() {
-  if (typeof document !== "undefined") {
-    document.documentElement.removeAttribute("data-season");
-  }
-}
-
 function parseDate(value) {
   if (!value) {
     return null;

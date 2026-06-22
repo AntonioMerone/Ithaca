@@ -1,36 +1,32 @@
 :root {
   color-scheme: light;
-  --color-bg: #f3eadb;
-  --color-surface: #fffaf0;
-  --color-surface-muted: #eadfca;
-  --color-surface-2: #f7efdf;
-  --color-surface-elevated: #fffaf0;
-  --color-text: #211d17;
-  --color-text-muted: #756c5e;
-  --color-text-faint: #9a8e7c;
-  --color-border: #d8c9ac;
-  --color-border-strong: #b9a27c;
-  --color-primary: #183c2f;
-  --color-primary-strong: #0e271f;
-  --color-primary-light: #2d6b52;
-  --color-primary-hover: #2d6b52;
-  --color-primary-text: #fffaf0;
-  --color-accent: #b84f2d;
-  --color-accent-soft: #f3e2d6;
+  --color-bg: #f7f3ec;
+  --color-surface: #fdfaf5;
+  --color-surface-muted: #ede8de;
+  --color-surface-2: #ede8de;
+  --color-surface-elevated: #fffdfa;
+  --color-text: #1a1410;
+  --color-text-muted: #6b5f4e;
+  --color-text-faint: #a89880;
+  --color-border: #c8bfa8;
+  --color-border-strong: #b4a78c;
+  --color-primary: #1b3a2d;
+  --color-primary-strong: #10291f;
+  --color-primary-light: #2d5c3e;
+  --color-primary-hover: #2d5c3e;
+  --color-primary-text: #faf7f0;
+  --color-accent: #8b3a1c;
+  --color-accent-soft: #f5e8e2;
   --color-gold: #b8860b;
   --color-gold-soft: #f5edd5;
-  --color-success: #2f6b50;
-  --color-success-soft: #dfecdf;
-  --color-warning: #946915;
-  --color-warning-soft: #f4e6bd;
-  --color-danger: #9d4735;
-  --color-danger-soft: #f5dfd6;
-  --color-shadow: rgb(64 51 31 / 11%);
-  --color-shadow-strong: rgb(64 51 31 / 19%);
-  --season-texture: none;
-  --season-texture-size: auto;
-  --season-hero-atmosphere: linear-gradient(135deg, rgb(255 250 240 / 82%), rgb(234 223 202 / 58%));
-  --season-symbol: "";
+  --color-success: #2d6a4f;
+  --color-success-soft: #e8f5ee;
+  --color-warning: #92600a;
+  --color-warning-soft: #fbf0dc;
+  --color-danger: #8b3a1c;
+  --color-danger-soft: #f5e8e2;
+  --color-shadow: rgb(26 20 16 / 6%);
+  --color-shadow-strong: rgb(26 20 16 / 9%);
 
   --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-body: var(--font-sans);
@@ -45,151 +41,11 @@
   --space-6: 1.5rem;
   --space-8: 2rem;
 
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
 
   --header-height: 4rem;
   --bottom-nav-height: 4.75rem;
   --content-max-width: 60rem;
-}
-
-:root[data-season="summer"] {
-  --color-bg: #fff8ee;
-  --color-surface: #fffcf5;
-  --color-surface-muted: #fff0d8;
-  --color-surface-2: #fff0d8;
-  --color-surface-elevated: #fffaf0;
-  --color-border: #e8c898;
-  --color-border-strong: #d6a96d;
-  --color-text: #2a1a08;
-  --color-text-muted: #8a6040;
-  --color-text-faint: #b58a62;
-  --color-primary: #c4621a;
-  --color-primary-strong: #7c360e;
-  --color-primary-light: #d4721a;
-  --color-primary-hover: #d4721a;
-  --color-primary-text: #fff8ee;
-  --color-accent: #e8a020;
-  --color-accent-soft: #fff0d0;
-  --color-gold: #f0c040;
-  --color-gold-soft: #fff8d0;
-  --color-success: #5d7d36;
-  --color-success-soft: #eef4d8;
-  --color-warning: #9a6a10;
-  --color-warning-soft: #fff2c8;
-  --color-danger: #b85830;
-  --color-danger-soft: #ffe4d4;
-  --season-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Cg fill='%23d6a96d' fill-opacity='.16'%3E%3Ccircle cx='12' cy='18' r='1.2'/%3E%3Ccircle cx='38' cy='9' r='1'/%3E%3Ccircle cx='54' cy='34' r='1.15'/%3E%3Ccircle cx='25' cy='48' r='.9'/%3E%3C/g%3E%3C/svg%3E");
-  --season-texture-size: 64px 64px;
-  --season-hero-atmosphere:
-    radial-gradient(circle at 88% 12%, rgb(240 192 64 / 20%), transparent 15rem),
-    radial-gradient(circle at 18% 88%, rgb(196 98 26 / 12%), transparent 16rem),
-    linear-gradient(135deg, rgb(255 252 245 / 92%), rgb(255 240 216 / 70%));
-  --season-symbol: "\2600";
-}
-
-:root[data-season="autumn"] {
-  --color-bg: #f5eee6;
-  --color-surface: #faf5ee;
-  --color-surface-muted: #f0e8dc;
-  --color-surface-2: #f0e8dc;
-  --color-surface-elevated: #fff8ef;
-  --color-border: #c8a888;
-  --color-border-strong: #a87850;
-  --color-text: #1a0e08;
-  --color-text-muted: #6b4e35;
-  --color-text-faint: #9c7a5f;
-  --color-primary: #6b2d0e;
-  --color-primary-strong: #411a08;
-  --color-primary-light: #7b3d1e;
-  --color-primary-hover: #7b3d1e;
-  --color-primary-text: #faf5ee;
-  --color-accent: #c4761a;
-  --color-accent-soft: #f5e0c8;
-  --color-gold: #a0620a;
-  --color-gold-soft: #f5e8c0;
-  --color-success: #496b3d;
-  --color-success-soft: #e4ecd8;
-  --color-warning: #8a5f12;
-  --color-warning-soft: #f3dfae;
-  --color-danger: #8c3d24;
-  --color-danger-soft: #f0d8c8;
-  --season-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cg stroke='%23a87850' stroke-opacity='.12' stroke-width='1' fill='none'%3E%3Cpath d='M-8 18 18-8M8 80 80 8M40 80 80 40'/%3E%3Cpath d='M22 30c8-10 18-7 22 0-9 2-15 3-22 0Z'/%3E%3C/g%3E%3C/svg%3E");
-  --season-texture-size: 72px 72px;
-  --season-hero-atmosphere:
-    radial-gradient(circle at 90% 18%, rgb(196 118 26 / 18%), transparent 15rem),
-    radial-gradient(circle at 14% 86%, rgb(107 45 14 / 13%), transparent 16rem),
-    linear-gradient(135deg, rgb(250 245 238 / 92%), rgb(245 224 200 / 62%));
-  --season-symbol: "\25C6";
-}
-
-:root[data-season="winter"] {
-  --color-bg: #eef2f5;
-  --color-surface: #f5f8fa;
-  --color-surface-muted: #e8eef2;
-  --color-surface-2: #e8eef2;
-  --color-surface-elevated: #fbfdff;
-  --color-border: #b8c8d8;
-  --color-border-strong: #8fa8bd;
-  --color-text: #0a1420;
-  --color-text-muted: #4a6880;
-  --color-text-faint: #7890a5;
-  --color-primary: #1a3a5c;
-  --color-primary-strong: #0d243c;
-  --color-primary-light: #2a4a6c;
-  --color-primary-hover: #2a4a6c;
-  --color-primary-text: #f5f8fa;
-  --color-accent: #2e6b8a;
-  --color-accent-soft: #d8eaf2;
-  --color-gold: #c8a840;
-  --color-gold-soft: #f0e8c0;
-  --color-success: #2f6b64;
-  --color-success-soft: #d8ece8;
-  --color-warning: #8a6a1e;
-  --color-warning-soft: #eee6c5;
-  --color-danger: #8c4a4a;
-  --color-danger-soft: #eadada;
-  --season-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='68' height='68' viewBox='0 0 68 68'%3E%3Cg stroke='%238fa8bd' stroke-opacity='.14' stroke-width='.8' fill='none' stroke-linecap='round'%3E%3Cpath d='M34 12v16M34 40v16M12 34h16M40 34h16M22 22l8 8M38 38l8 8M46 22l-8 8M30 38l-8 8'/%3E%3C/g%3E%3C/svg%3E");
-  --season-texture-size: 68px 68px;
-  --season-hero-atmosphere:
-    radial-gradient(circle at 90% 14%, rgb(46 107 138 / 16%), transparent 14rem),
-    radial-gradient(circle at 16% 84%, rgb(200 168 64 / 10%), transparent 15rem),
-    linear-gradient(135deg, rgb(245 248 250 / 94%), rgb(216 234 242 / 58%));
-  --season-symbol: "\2726";
-}
-
-:root[data-season="spring"] {
-  --color-bg: #f2f5ee;
-  --color-surface: #f8faf5;
-  --color-surface-muted: #e8eee0;
-  --color-surface-2: #e8eee0;
-  --color-surface-elevated: #fcfff8;
-  --color-border: #a8c088;
-  --color-border-strong: #7fa060;
-  --color-text: #0e1a0a;
-  --color-text-muted: #4e6b3a;
-  --color-text-faint: #789263;
-  --color-primary: #2d5c1e;
-  --color-primary-strong: #18380f;
-  --color-primary-light: #3d6c2e;
-  --color-primary-hover: #3d6c2e;
-  --color-primary-text: #f8faf5;
-  --color-accent: #8b6914;
-  --color-accent-soft: #eee0b8;
-  --color-gold: #c4a020;
-  --color-gold-soft: #f5ecc0;
-  --color-success: #2d6b3f;
-  --color-success-soft: #dfeedd;
-  --color-warning: #7c6815;
-  --color-warning-soft: #efe5b8;
-  --color-danger: #8f5138;
-  --color-danger-soft: #ecd9ce;
-  --season-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='70' height='70' viewBox='0 0 70 70'%3E%3Cg fill='%237fa060' fill-opacity='.13'%3E%3Cellipse cx='17' cy='18' rx='1.1' ry='3.1' transform='rotate(-28 17 18)'/%3E%3Cellipse cx='48' cy='14' rx='.9' ry='2.8' transform='rotate(30 48 14)'/%3E%3Cellipse cx='54' cy='46' rx='1' ry='3' transform='rotate(-18 54 46)'/%3E%3Cellipse cx='24' cy='55' rx='.8' ry='2.6' transform='rotate(26 24 55)'/%3E%3C/g%3E%3C/svg%3E");
-  --season-texture-size: 70px 70px;
-  --season-hero-atmosphere:
-    radial-gradient(circle at 90% 12%, rgb(196 160 32 / 14%), transparent 14rem),
-    radial-gradient(circle at 14% 86%, rgb(45 107 63 / 12%), transparent 16rem),
-    linear-gradient(135deg, rgb(248 250 245 / 94%), rgb(223 238 221 / 60%));
-  --season-symbol: "\273F";
 }
