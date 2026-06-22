@@ -441,9 +441,7 @@ function renderDashboardBudgetRow(budget, currency) {
   `;
 }
 
-function renderDashboardHero({ trip, destinations, duration, countdown, status, statusLabel, budget, timelineItems, checklistItems, flights, stays }) {
-  const currency = trip.currency || "EUR";
-
+function renderDashboardHero({ trip, destinations, duration, countdown, status, statusLabel }) {
   return `
     <header class="dashboard-hero">
       <div class="dashboard-hero__header">
@@ -458,28 +456,11 @@ function renderDashboardHero({ trip, destinations, duration, countdown, status, 
             <span>${escapeHtml(statusLabel)}</span>
           </div>
           <p class="dashboard-hero__message">${getHeroMessage(status)}</p>
-          ${renderTripNotes(trip.notes)}
         </div>
         <div class="dashboard-hero__aside">
-          <div class="dashboard-hero__metrics" aria-label="Metriche economiche viaggio">
-            <div class="dashboard-hero__metric">
-              <span>Totale viaggio</span>
-              <strong>${formatCurrency(budget.plannedTotal, currency)}</strong>
-            </div>
-            <div class="dashboard-hero__metric dashboard-hero__metric--paid">
-              <span>Gia pagato</span>
-              <strong>${formatCurrency(budget.paidTotal, currency)}</strong>
-            </div>
-            <div class="dashboard-hero__metric dashboard-hero__metric--due">
-              <span>Da pagare</span>
-              <strong>${formatCurrency(budget.unpaidTotal, currency)}</strong>
-            </div>
-          </div>
           <button class="button button--ghost button--small" type="button" data-action="edit-dashboard-trip" data-trip-id="${escapeHtml(trip.id)}">Modifica viaggio</button>
         </div>
       </div>
-      ${renderDashboardCountdownStrip({ trip, status, statusLabel, timelineItems, checklistItems, flights, stays })}
-      ${renderDashboardBudgetRow(budget, currency)}
     </header>
   `;
 }
@@ -1063,6 +1044,207 @@ function renderDossierRecap(context) {
           <p>Aggiungi voli, alloggi, attivita o tappe nella timeline.</p>
         </div>
       `}
+    </section>
+  `;
+}
+
+function getTodayComparable() {
+  const now = new Date();
+  const today = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0")
+  ].join("-");
+  const time = [
+    String(now.getHours()).padStart(2, "0"),
+    String(now.getMinutes()).padStart(2, "0")
+  ].join(":");
+
+  return `${today}T${time}`;
+}
+
+function getEntryComparable(entry) {
+  return `${entry.date}T${entry.time || "23:59"}`;
+}
+
+function getQuickRecapEntries(context, limit = 5) {
+  const entries = buildDossierRecap(context);
+  const now = getTodayComparable();
+  const futureEntries = entries.filter((entry) => getEntryComparable(entry) >= now);
+  const source = futureEntries.length ? futureEntries : [...entries].reverse();
+
+  return source.slice(0, limit);
+}
+
+function renderQuickRecap(context, basePath) {
+  const entries = getQuickRecapEntries(context, 5);
+
+  return `
+    <section class="panel panel--wide dashboard-quick-recap" aria-labelledby="quick-recap-title">
+      <header class="dashboard-section-heading">
+        <div>
+          <p class="page__eyebrow">Recap veloce</p>
+          <h2 class="panel__title" id="quick-recap-title">Prossimi momenti</h2>
+        </div>
+        <a class="button button--ghost button--small" href="${basePath}/timeline">Vedi timeline completa &rarr;</a>
+      </header>
+      ${entries.length ? `
+        <div class="quick-recap-list">
+          ${entries.map((entry) => `
+            <article class="quick-recap-item">
+              <time datetime="${escapeHtml(entry.date)}">${formatDate(entry.date)}</time>
+              <span>${escapeHtml(entry.label)}</span>
+              <strong>${entry.time ? `${escapeHtml(entry.time)} &middot; ` : ""}${escapeHtml(entry.title)}</strong>
+              ${entry.meta ? `<p>${escapeHtml(entry.meta)}</p>` : ""}
+            </article>
+          `).join("")}
+        </div>
+      ` : `
+        <article class="dossier-empty">
+          <p>Nessun momento datato nel dossier.</p>
+          <p>Aggiungi voli, soggiorni, attivita o tappe nella timeline.</p>
+        </article>
+      `}
+    </section>
+  `;
+}
+
+function countLabel(count, singular, plural) {
+  return count === 1 ? `1 ${singular}` : `${count} ${plural}`;
+}
+
+function getNextDatedItem(items, dateField, timeField = "") {
+  const sortedItems = sortByDateTime(items, dateField, timeField).filter((item) => item[dateField]);
+  const today = getTodayComparable().slice(0, 10);
+  return sortedItems.find((item) => String(item[dateField]) >= today) || sortedItems[0] || null;
+}
+
+function getPartialPaymentCount(items) {
+  return items.filter((item) => item.paymentStatus === "partial").length;
+}
+
+function renderAccessCard({ title, label, detail, href, cta }) {
+  return `
+    <a class="dashboard-access-card" href="${href}">
+      <span class="dashboard-access-card__label">${escapeHtml(label)}</span>
+      <strong>${escapeHtml(title)}</strong>
+      <p>${escapeHtml(detail)}</p>
+      <span class="dashboard-access-card__cta">${escapeHtml(cta)} &rarr;</span>
+    </a>
+  `;
+}
+
+function renderDashboardAccessGrid({ trip, flights, stays, activities, budget, timelineItems, checklistItems, notes, basePath }) {
+  const currency = trip.currency || "EUR";
+  const nextFlight = getNextDatedItem(flights, "departureDate", "departureTime");
+  const nextStay = getNextDatedItem(stays, "checkInDate");
+  const nextActivity = getNextDatedItem(activities, "date", "time");
+  const recapEntries = buildDossierRecap({ timelineItems, flights, stays, activities });
+  const nextRecapEntry = getQuickRecapEntries({ timelineItems, flights, stays, activities }, 1)[0] || null;
+  const checklistSummary = calculateChecklistSummary(checklistItems);
+  const sortedNotes = sortNotes(notes);
+  const latestNote = sortedNotes[0] || null;
+  const flightRoute = nextFlight ? [nextFlight.from, nextFlight.to].filter(Boolean).join(" -> ") : "";
+  const stayName = nextStay ? nextStay.structureName || getDestinationName(trip.destinations, nextStay.destinationId) || "Soggiorno" : "";
+  const activityName = nextActivity ? nextActivity.name || "Attivita" : "";
+  const activityPartialCount = getPartialPaymentCount(activities);
+
+  return `
+    <section class="dashboard-access-section" aria-labelledby="dashboard-access-title">
+      <header class="dashboard-section-heading">
+        <div>
+          <p class="page__eyebrow">Sezioni dossier</p>
+          <h2 class="panel__title" id="dashboard-access-title">Apri una sezione</h2>
+        </div>
+      </header>
+      <div class="dashboard-access-grid">
+        ${renderAccessCard({
+          title: "Voli",
+          label: flights.length ? countLabel(flights.length, "volo inserito", "voli inseriti") : "Nessun volo inserito",
+          detail: flightRoute ? `Prossimo: ${flightRoute}` : "Aggiungi il primo volo",
+          href: `${basePath}/flights`,
+          cta: "Apri Voli"
+        })}
+        ${renderAccessCard({
+          title: "Soggiorni",
+          label: stays.length ? countLabel(stays.length, "soggiorno", "soggiorni") : "Nessun soggiorno inserito",
+          detail: stayName ? `Prossimo check-in: ${stayName}` : "Aggiungi il primo soggiorno",
+          href: `${basePath}/stays`,
+          cta: "Apri Soggiorni"
+        })}
+        ${renderAccessCard({
+          title: "Attivita",
+          label: activities.length ? countLabel(activities.length, "attivita", "attivita") : "Nessuna attivita inserita",
+          detail: activityName || (activityPartialCount ? `${activityPartialCount} pagamenti parziali` : "Aggiungi la prima attivita"),
+          href: `${basePath}/activities`,
+          cta: "Apri Attivita"
+        })}
+        ${renderAccessCard({
+          title: "Budget",
+          label: `Totale ${formatCurrency(budget.plannedTotal, currency)}`,
+          detail: `Da pagare ${formatCurrency(budget.unpaidTotal, currency)}`,
+          href: `${basePath}/budget`,
+          cta: "Apri Budget"
+        })}
+        ${renderAccessCard({
+          title: "Timeline",
+          label: recapEntries.length ? countLabel(recapEntries.length, "evento", "eventi") : "Nessun evento inserito",
+          detail: nextRecapEntry ? `Prossimo: ${nextRecapEntry.label} ${nextRecapEntry.title}` : "Aggiungi tappe e momenti",
+          href: `${basePath}/timeline`,
+          cta: "Apri Timeline"
+        })}
+        ${renderAccessCard({
+          title: "Checklist",
+          label: checklistItems.length ? `${checklistSummary.completionRate}% pronta` : "Checklist vuota",
+          detail: checklistItems.length ? `${checklistSummary.completed}/${checklistSummary.total} completati` : "Aggiungi il primo task",
+          href: `${basePath}/checklist`,
+          cta: "Apri Checklist"
+        })}
+        ${renderAccessCard({
+          title: "Note",
+          label: sortedNotes.length ? countLabel(sortedNotes.length, "nota", "note") : "Nessuna nota inserita",
+          detail: latestNote ? `Ultima: ${latestNote.title || getNotePreview(latestNote.content, 48)}` : "Aggiungi la prima nota",
+          href: `${basePath}/notes`,
+          cta: "Apri Note"
+        })}
+      </div>
+    </section>
+  `;
+}
+
+function renderDedicatedDossierSection({ title, summary, tripId, action, emptyText, emptyDescription, itemsHtml }) {
+  return `
+    <section class="dossier-section dossier-section--dedicated" aria-labelledby="${action}-title">
+      <header class="dossier-section__header">
+        <div>
+          <h2 class="panel__title" id="${action}-title">${escapeHtml(title)}</h2>
+          <p class="panel__body">${escapeHtml(summary)}</p>
+        </div>
+        <button class="button button--primary button--small" type="button" data-action="${action}" data-trip-id="${escapeHtml(tripId)}">Aggiungi</button>
+      </header>
+      ${itemsHtml ? `<div class="dossier-list">${itemsHtml}</div>` : `
+        <article class="dossier-empty">
+          <p>${escapeHtml(emptyText)}</p>
+          ${emptyDescription ? `<p>${escapeHtml(emptyDescription)}</p>` : ""}
+          <button class="button button--ghost button--small" type="button" data-action="${action}" data-trip-id="${escapeHtml(tripId)}">${escapeHtml(emptyDescription || "Aggiungi")}</button>
+        </article>
+      `}
+    </section>
+  `;
+}
+
+function renderDedicatedDossierPage({ trip, title, summary, sectionHtml }) {
+  const encodedTripId = encodeURIComponent(trip.id);
+
+  return `
+    <section class="page dossier-section-page" data-dashboard-trip-id="${escapeHtml(trip.id)}" aria-labelledby="dossier-section-title">
+      <a class="button button--ghost dossier-back-link" href="#/trip/${encodedTripId}">&larr; Dossier</a>
+      <header class="page__header">
+        <p class="page__eyebrow">Dossier viaggio</p>
+        <h1 class="page__title" id="dossier-section-title">${escapeHtml(title)}</h1>
+        <p class="page__summary">${escapeHtml(summary)}</p>
+      </header>
+      ${sectionHtml}
     </section>
   `;
 }
@@ -1704,13 +1886,92 @@ export function renderTripDashboardView({ params }) {
 
   return `
     <section class="page dashboard-page" data-dashboard-trip-id="${escapeHtml(trip.id)}" aria-labelledby="trip-title">
-      ${renderDashboardHero({ trip, destinations, duration, countdown, status, statusLabel, budget, timelineItems, checklistItems, flights, stays })}
-
-      ${renderDestinationsSection(normalizedDestinations, trip.currency)}
-      ${renderDossierSections(trip, flights, stays, activities)}
-      ${renderDossierRecap({ timelineItems, flights, stays, activities })}
-      ${renderDashboardWidgets({ trip, status, budget, timelineItems, notes, basePath })}
-      ${renderChecklistPreview(checklistItems, basePath)}
+      ${renderDashboardHero({ trip, destinations, duration, countdown, status, statusLabel })}
+      ${renderDashboardCountdownStrip({ trip, status, statusLabel, timelineItems, checklistItems, flights, stays })}
+      ${renderDashboardBudgetRow(budget, trip.currency || "EUR")}
+      ${renderQuickRecap({ timelineItems, flights, stays, activities }, basePath)}
+      ${renderDashboardAccessGrid({ trip, flights, stays, activities, budget, timelineItems, checklistItems, notes, basePath })}
     </section>
   `;
+}
+
+export function renderFlightsView({ params }) {
+  ensureDashboardHandlers();
+  const trip = getTripById(params.tripId);
+
+  if (!trip) {
+    return renderMissingTrip();
+  }
+
+  const flights = sortByDateTime(getFlightsByTripId(trip.id), "departureDate", "departureTime");
+  const sectionHtml = renderDedicatedDossierSection({
+    title: "Voli",
+    summary: flights.length === 1 ? "1 volo nel dossier" : `${flights.length} voli nel dossier`,
+    tripId: trip.id,
+    action: "open-flight-form",
+    emptyText: "Nessun volo inserito",
+    emptyDescription: "Aggiungi il primo volo",
+    itemsHtml: flights.map((flight) => renderFlightCard(flight, trip.currency || "EUR")).join("")
+  });
+
+  return renderDedicatedDossierPage({
+    trip,
+    title: "Voli",
+    summary: "Lista completa dei voli del viaggio.",
+    sectionHtml
+  });
+}
+
+export function renderStaysView({ params }) {
+  ensureDashboardHandlers();
+  const trip = getTripById(params.tripId);
+
+  if (!trip) {
+    return renderMissingTrip();
+  }
+
+  const stays = sortByDateTime(getStaysByTripId(trip.id), "checkInDate");
+  const sectionHtml = renderDedicatedDossierSection({
+    title: "Soggiorni",
+    summary: stays.length === 1 ? "1 soggiorno nel dossier" : `${stays.length} soggiorni nel dossier`,
+    tripId: trip.id,
+    action: "open-stay-form",
+    emptyText: "Nessun soggiorno inserito",
+    emptyDescription: "Aggiungi il primo soggiorno",
+    itemsHtml: stays.map((stay) => renderStayCard(stay, trip)).join("")
+  });
+
+  return renderDedicatedDossierPage({
+    trip,
+    title: "Soggiorni",
+    summary: "Lista completa degli alloggi e soggiorni del viaggio.",
+    sectionHtml
+  });
+}
+
+export function renderActivitiesView({ params }) {
+  ensureDashboardHandlers();
+  const trip = getTripById(params.tripId);
+
+  if (!trip) {
+    return renderMissingTrip();
+  }
+
+  const activities = sortByDateTime(getActivitiesByTripId(trip.id), "date", "time");
+  const sectionHtml = renderDedicatedDossierSection({
+    title: "Attivita",
+    summary: activities.length === 1 ? "1 attivita nel dossier" : `${activities.length} attivita nel dossier`,
+    tripId: trip.id,
+    action: "open-activity-form",
+    emptyText: "Nessuna attivita inserita",
+    emptyDescription: "Aggiungi la prima attivita",
+    itemsHtml: activities.map((activity) => renderActivityCard(activity, trip)).join("")
+  });
+
+  return renderDedicatedDossierPage({
+    trip,
+    title: "Attivita",
+    summary: "Lista completa delle attivita del viaggio.",
+    sectionHtml
+  });
 }

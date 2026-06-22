@@ -1,5 +1,10 @@
 import { renderHomeView } from "./views/homeView.js";
-import { renderTripDashboardView } from "./views/tripDashboardView.js";
+import {
+  renderActivitiesView,
+  renderFlightsView,
+  renderStaysView,
+  renderTripDashboardView
+} from "./views/tripDashboardView.js";
 import { renderTimelineView } from "./views/timelineView.js";
 import { renderBudgetView } from "./views/budgetView.js";
 import { renderChecklistView } from "./views/checklistView.js";
@@ -18,6 +23,24 @@ const ROUTES = [
     name: "Viaggio",
     pattern: /^#\/trip\/([^/]+)\/?$/,
     render: renderTripDashboardView,
+    tripPage: true
+  },
+  {
+    name: "Voli",
+    pattern: /^#\/trip\/([^/]+)\/flights\/?$/,
+    render: renderFlightsView,
+    tripPage: true
+  },
+  {
+    name: "Soggiorni",
+    pattern: /^#\/trip\/([^/]+)\/stays\/?$/,
+    render: renderStaysView,
+    tripPage: true
+  },
+  {
+    name: "Attivita",
+    pattern: /^#\/trip\/([^/]+)\/activities\/?$/,
+    render: renderActivitiesView,
     tripPage: true
   },
   {
