@@ -1,4 +1,5 @@
 import { closeModal, openModal } from "../components/modal.js";
+import { renderAppBar } from "../components/appBar.js";
 import { showToast } from "../components/toast.js";
 import {
   createActivity,
@@ -13,7 +14,6 @@ import {
   getExpensesByTripId,
   getFlightById,
   getFlightsByTripId,
-  getNotesByTripId,
   getStayById,
   getStaysByTripId,
   getTimelineItemsByTripId,
@@ -198,7 +198,7 @@ function handleDashboardFormInput(event) {
   }
 }
 
-function ensureDashboardHandlers() {
+export function ensureDashboardHandlers() {
   if (dashboardHandlersReady) {
     return;
   }
@@ -260,9 +260,11 @@ function getCountdownNumber(status, startDate) {
   return "done";
 }
 
-function getCountdownCaption(status) {
+function getCountdownCaption(status, startDate = "") {
+  const days = getDaysUntilTrip(startDate);
+  const futureCaption = days === 1 ? "giorno alla partenza" : "giorni alla partenza";
   const captions = {
-    future: "giorni alla partenza",
+    future: futureCaption,
     starts_today: "partenza oggi",
     ongoing: "viaggio in corso",
     past: "viaggio concluso"
@@ -403,12 +405,14 @@ function renderDashboardCountdownStrip({ trip, status, statusLabel, timelineItem
   const firstStay = sortedStays[0] || null;
   const firstFlightRoute = firstFlight ? [firstFlight.from, firstFlight.to].filter(Boolean).join(" -> ") : "";
   const firstStayLabel = firstStay ? firstStay.structureName || getDestinationName(trip.destinations, firstStay.destinationId) : "";
+  const countdownNumber = getCountdownNumber(status, trip.startDate);
+  const countdownCaption = getCountdownCaption(status, trip.startDate);
 
   return `
     <section class="dashboard-countdown-strip" aria-label="Sintesi operativa viaggio">
-      <div class="dashboard-countdown-strip__count">
-        <span>${escapeHtml(getCountdownNumber(status, trip.startDate))}</span>
-        <strong>${escapeHtml(getCountdownCaption(status))}</strong>
+      <div class="dashboard-countdown-strip__count" aria-label="${escapeHtml(`${countdownNumber} ${countdownCaption}`)}">
+        <span class="dashboard-countdown-strip__number">${escapeHtml(countdownNumber)}</span>
+        <strong class="dashboard-countdown-strip__caption">${escapeHtml(countdownCaption)}</strong>
       </div>
       <div class="dashboard-countdown-strip__separator" aria-hidden="true"></div>
       <div class="dashboard-countdown-strip__details">
@@ -452,7 +456,7 @@ function renderDashboardHero({ trip, destinations, duration, countdown, status, 
           <div class="dashboard-hero__meta">
             <span class="dashboard-hero__meta-hot">${escapeHtml(countdown)}</span>
             <span>${formatDate(trip.startDate)} - ${formatDate(trip.endDate)}</span>
-            <span>${duration} giorni</span>
+            <span>${duration} giorni di viaggio</span>
             <span>${escapeHtml(statusLabel)}</span>
           </div>
           <p class="dashboard-hero__message">${getHeroMessage(status)}</p>
@@ -1123,9 +1127,23 @@ function getPartialPaymentCount(items) {
   return items.filter((item) => item.paymentStatus === "partial").length;
 }
 
-function renderAccessCard({ title, label, detail, href, cta }) {
+function getAccessIcon(key) {
+  const icons = {
+    flights: `<svg viewBox="0 0 24 24"><path d="M3 12h18M12 3l4 9-4 9-4-9 4-9Z"/></svg>`,
+    stays: `<svg viewBox="0 0 24 24"><path d="M4 11h16v8M6 11V7h12v4M8 15h8"/></svg>`,
+    activities: `<svg viewBox="0 0 24 24"><path d="M12 3v18M5 8h14M7 16h10"/></svg>`,
+    budget: `<svg viewBox="0 0 24 24"><path d="M15 6a5 5 0 1 0 0 12M6 10h8M6 14h8"/></svg>`,
+    timeline: `<svg viewBox="0 0 24 24"><path d="M7 5v14M7 7h10M7 12h7M7 17h11"/></svg>`,
+    checklist: `<svg viewBox="0 0 24 24"><path d="m5 12 3 3 5-6M15 7h4M15 12h4M15 17h4"/></svg>`
+  };
+
+  return icons[key] || icons.timeline;
+}
+
+function renderAccessCard({ title, label, detail, href, cta, icon }) {
   return `
     <a class="dashboard-access-card" href="${href}">
+      <span class="dashboard-access-card__icon" aria-hidden="true">${getAccessIcon(icon)}</span>
       <span class="dashboard-access-card__label">${escapeHtml(label)}</span>
       <strong>${escapeHtml(title)}</strong>
       <p>${escapeHtml(detail)}</p>
@@ -1134,7 +1152,7 @@ function renderAccessCard({ title, label, detail, href, cta }) {
   `;
 }
 
-function renderDashboardAccessGrid({ trip, flights, stays, activities, budget, timelineItems, checklistItems, notes, basePath }) {
+function renderDashboardAccessGrid({ trip, flights, stays, activities, budget, timelineItems, checklistItems, basePath }) {
   const currency = trip.currency || "EUR";
   const nextFlight = getNextDatedItem(flights, "departureDate", "departureTime");
   const nextStay = getNextDatedItem(stays, "checkInDate");
@@ -1142,8 +1160,6 @@ function renderDashboardAccessGrid({ trip, flights, stays, activities, budget, t
   const recapEntries = buildDossierRecap({ timelineItems, flights, stays, activities });
   const nextRecapEntry = getQuickRecapEntries({ timelineItems, flights, stays, activities }, 1)[0] || null;
   const checklistSummary = calculateChecklistSummary(checklistItems);
-  const sortedNotes = sortNotes(notes);
-  const latestNote = sortedNotes[0] || null;
   const flightRoute = nextFlight ? [nextFlight.from, nextFlight.to].filter(Boolean).join(" -> ") : "";
   const stayName = nextStay ? nextStay.structureName || getDestinationName(trip.destinations, nextStay.destinationId) || "Soggiorno" : "";
   const activityName = nextActivity ? nextActivity.name || "Attivita" : "";
@@ -1163,49 +1179,48 @@ function renderDashboardAccessGrid({ trip, flights, stays, activities, budget, t
           label: flights.length ? countLabel(flights.length, "volo inserito", "voli inseriti") : "Nessun volo inserito",
           detail: flightRoute ? `Prossimo: ${flightRoute}` : "Aggiungi il primo volo",
           href: `${basePath}/flights`,
-          cta: "Apri Voli"
+          cta: "Apri Voli",
+          icon: "flights"
         })}
         ${renderAccessCard({
           title: "Soggiorni",
           label: stays.length ? countLabel(stays.length, "soggiorno", "soggiorni") : "Nessun soggiorno inserito",
           detail: stayName ? `Prossimo check-in: ${stayName}` : "Aggiungi il primo soggiorno",
           href: `${basePath}/stays`,
-          cta: "Apri Soggiorni"
+          cta: "Apri Soggiorni",
+          icon: "stays"
         })}
         ${renderAccessCard({
           title: "Attivita",
           label: activities.length ? countLabel(activities.length, "attivita", "attivita") : "Nessuna attivita inserita",
           detail: activityName || (activityPartialCount ? `${activityPartialCount} pagamenti parziali` : "Aggiungi la prima attivita"),
           href: `${basePath}/activities`,
-          cta: "Apri Attivita"
+          cta: "Apri Attivita",
+          icon: "activities"
         })}
         ${renderAccessCard({
           title: "Budget",
           label: `Totale ${formatCurrency(budget.plannedTotal, currency)}`,
           detail: `Da pagare ${formatCurrency(budget.unpaidTotal, currency)}`,
           href: `${basePath}/budget`,
-          cta: "Apri Budget"
+          cta: "Apri Budget",
+          icon: "budget"
         })}
         ${renderAccessCard({
           title: "Timeline",
           label: recapEntries.length ? countLabel(recapEntries.length, "evento", "eventi") : "Nessun evento inserito",
           detail: nextRecapEntry ? `Prossimo: ${nextRecapEntry.label} ${nextRecapEntry.title}` : "Aggiungi tappe e momenti",
           href: `${basePath}/timeline`,
-          cta: "Apri Timeline"
+          cta: "Apri Timeline",
+          icon: "timeline"
         })}
         ${renderAccessCard({
           title: "Checklist",
           label: checklistItems.length ? `${checklistSummary.completionRate}% pronta` : "Checklist vuota",
           detail: checklistItems.length ? `${checklistSummary.completed}/${checklistSummary.total} completati` : "Aggiungi il primo task",
           href: `${basePath}/checklist`,
-          cta: "Apri Checklist"
-        })}
-        ${renderAccessCard({
-          title: "Note",
-          label: sortedNotes.length ? countLabel(sortedNotes.length, "nota", "note") : "Nessuna nota inserita",
-          detail: latestNote ? `Ultima: ${latestNote.title || getNotePreview(latestNote.content, 48)}` : "Aggiungi la prima nota",
-          href: `${basePath}/notes`,
-          cta: "Apri Note"
+          cta: "Apri Checklist",
+          icon: "checklist"
         })}
       </div>
     </section>
@@ -1238,6 +1253,10 @@ function renderDedicatedDossierPage({ trip, title, summary, sectionHtml }) {
 
   return `
     <section class="page dossier-section-page" data-dashboard-trip-id="${escapeHtml(trip.id)}" aria-labelledby="dossier-section-title">
+      ${renderAppBar({
+        subtitle: title,
+        backHref: `#/trip/${encodedTripId}`
+      })}
       <a class="button button--ghost dossier-back-link" href="#/trip/${encodedTripId}">&larr; Dossier</a>
       <header class="page__header">
         <p class="page__eyebrow">Dossier viaggio</p>
@@ -1878,7 +1897,6 @@ export function renderTripDashboardView({ params }) {
   const expenses = getExpensesByTripId(trip.id);
   const timelineItems = getTimelineItemsByTripId(trip.id);
   const checklistItems = getChecklistItemsByTripId(trip.id);
-  const notes = getNotesByTripId(trip.id);
   const flights = getFlightsByTripId(trip.id);
   const stays = getStaysByTripId(trip.id);
   const activities = getActivitiesByTripId(trip.id);
@@ -1889,8 +1907,8 @@ export function renderTripDashboardView({ params }) {
       ${renderDashboardHero({ trip, destinations, duration, countdown, status, statusLabel })}
       ${renderDashboardCountdownStrip({ trip, status, statusLabel, timelineItems, checklistItems, flights, stays })}
       ${renderDashboardBudgetRow(budget, trip.currency || "EUR")}
+      ${renderDashboardAccessGrid({ trip, flights, stays, activities, budget, timelineItems, checklistItems, basePath })}
       ${renderQuickRecap({ timelineItems, flights, stays, activities }, basePath)}
-      ${renderDashboardAccessGrid({ trip, flights, stays, activities, budget, timelineItems, checklistItems, notes, basePath })}
     </section>
   `;
 }

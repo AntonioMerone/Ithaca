@@ -1,4 +1,5 @@
 import { closeModal, markModalDirty, openModal } from "../components/modal.js";
+import { renderAppBar } from "../components/appBar.js";
 import { showToast } from "../components/toast.js";
 import {
   createBackupPayload,
@@ -380,12 +381,23 @@ function renderDataManagementContent(error = "") {
   return `
     <div class="data-management">
       ${error ? `<div class="form-errors" role="alert"><p>${escapeHtml(error)}</p></div>` : ""}
-      <p class="panel__body">Salva una copia di sicurezza, ripristina una copia precedente o cancella i dati locali di Ithaca.</p>
-
-      <div class="data-management__actions">
-        <button class="button button--primary" type="button" data-action="export-backup">Salva una copia</button>
-        <button class="button button--ghost" type="button" data-action="choose-import-file">Ripristina una copia</button>
-        <button class="button button--danger-ghost" type="button" data-action="open-reset-confirmation">Cancella dati</button>
+      <div class="data-card-grid">
+        <button class="data-card" type="button" data-action="export-backup">
+          <span class="data-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14"/></svg></span>
+          <span><strong>Salva una copia</strong><small>Esporta tutti i dati come file JSON.</small></span>
+        </button>
+        <button class="data-card" type="button" data-action="choose-import-file">
+          <span class="data-card__icon data-card__icon--amber" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 21V9m0 0 4 4m-4-4-4 4M5 5h14"/></svg></span>
+          <span><strong>Ripristina una copia</strong><small>Importa un backup JSON salvato in precedenza.</small></span>
+        </button>
+        <button class="data-card" type="button" data-action="open-reset-confirmation">
+          <span class="data-card__icon data-card__icon--coral" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg></span>
+          <span><strong>Cancella tutto</strong><small>Rimuove tutti i dati dall'app. Irreversibile.</small></span>
+        </button>
+        <article class="data-card data-card--static">
+          <span class="data-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v6c0 4 3 7 7 9 4-2 7-5 7-9V6l-7-3Z"/></svg></span>
+          <span><strong>I tuoi dati</strong><small>Ithaca salva tutto nel browser, solo sul tuo dispositivo. Nessun account, nessun server.</small></span>
+        </article>
       </div>
 
       <input class="visually-hidden" id="backup-file-input" type="file" accept="application/json,.json" data-action="import-backup-file">
@@ -633,10 +645,15 @@ function ensureHomeHandlers() {
 
 function renderEmptyState() {
   return `
-    <article class="empty-state">
-      <h2>Nessun dossier ancora</h2>
-      <p>Crea il tuo primo viaggio e organizza destinazioni, budget, timeline, checklist e note in un unico posto.</p>
-      <button class="button button--primary" type="button" data-action="open-trip-form">Crea primo viaggio</button>
+    <article class="empty-state empty-state--home">
+      <div class="empty-state__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M4 19c4-5 12-5 16 0M6 15c3-3 9-3 12 0M8 11c2-2 6-2 8 0M12 5v8"/></svg>
+      </div>
+      <h2>Il tuo primo dossier di viaggio</h2>
+      <p>Organizza budget, tappe, checklist e note in un unico posto. Anche offline.</p>
+      <button class="button button--primary" type="button" data-action="open-trip-form">Crea il primo dossier</button>
+      <button class="button button--ghost button--small" type="button" data-action="choose-import-file">Importa backup esistente</button>
+      <input class="visually-hidden" id="backup-file-input" type="file" accept="application/json,.json" data-action="import-backup-file">
     </article>
   `;
 }
@@ -708,6 +725,10 @@ export function renderHomeView() {
 
   return `
     <section class="page" aria-labelledby="home-title">
+      ${renderAppBar({
+        subtitle: "Il dossier digitale",
+        actionHtml: `<button class="button button--ghost button--small" type="button" data-action="open-data-management">Gestione dati</button>`
+      })}
       <header class="page__header home-hero">
         <div>
           <p class="page__eyebrow">Dossier viaggio</p>
@@ -715,7 +736,6 @@ export function renderHomeView() {
           <p class="page__summary">Ithaca organizza budget, tappe, checklist e note del viaggio in un unico dossier.</p>
         </div>
         <div class="home-actions">
-          <button class="button button--ghost" type="button" data-action="open-data-management">Gestione dati</button>
           <button class="button button--primary" type="button" data-action="open-trip-form">Nuovo viaggio</button>
         </div>
       </header>

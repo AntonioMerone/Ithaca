@@ -10,6 +10,7 @@ import { renderBudgetView } from "./views/budgetView.js";
 import { renderChecklistView } from "./views/checklistView.js";
 import { renderNotesView } from "./views/notesView.js";
 import { renderBottomNav } from "./components/bottomNav.js";
+import { renderFab } from "./components/fab.js";
 import { getTripById } from "./storage.js";
 
 const ROUTES = [
@@ -119,9 +120,10 @@ export function initRouter({ app, routeStatus }) {
     const viewHtml = route.render({ params: route.params, hash });
     const showTripNav = route.tripPage && getTripById(route.params.tripId);
     const navHtml = showTripNav ? renderBottomNav(route.params.tripId, hash) : "";
+    const fabHtml = renderFab(hash);
 
     app.classList.toggle("has-bottom-nav", Boolean(showTripNav));
-    app.innerHTML = viewHtml + navHtml;
+    app.innerHTML = viewHtml + navHtml + fabHtml;
     routeStatus.textContent = route.name;
     app.focus({ preventScroll: true });
   }

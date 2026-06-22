@@ -11,6 +11,7 @@ import {
   getTripById,
   updateExpense
 } from "../storage.js";
+import { ensureDashboardHandlers } from "./tripDashboardView.js";
 import {
   EXPENSE_CATEGORIES,
   EXPENSE_STATUSES,
@@ -165,7 +166,7 @@ function buildLedgerItems({ expenses, flights, stays, activities }) {
       meta: copy.meta,
       typeLabel: "Trasporto",
       notes: flight.notes || "",
-      editable: false
+      editable: true
     };
   });
 
@@ -187,7 +188,7 @@ function buildLedgerItems({ expenses, flights, stays, activities }) {
       meta: stay.bookingNumber ? `Prenotazione ${stay.bookingNumber}` : getStayTypeLabel(stay.structureType),
       typeLabel: getStayTypeLabel(stay.structureType),
       notes: stay.notes || "",
-      editable: false
+      editable: true
     };
   });
 
@@ -209,7 +210,7 @@ function buildLedgerItems({ expenses, flights, stays, activities }) {
       typeLabel: getActivityTypeLabel(activity.type),
       meta: [getActivityTypeLabel(activity.type), activity.location].filter(Boolean).join(" · "),
       notes: activity.notes || "",
-      editable: false
+      editable: true
     };
   });
 
@@ -345,10 +346,38 @@ function renderLedgerActions(item) {
     return "";
   }
 
+  const editActions = {
+    expenses: {
+      action: "edit-expense",
+      idName: "expense-id",
+      label: "Azioni spesa manuale"
+    },
+    flights: {
+      action: "edit-flight",
+      idName: "flight-id",
+      label: "Azioni volo"
+    },
+    stays: {
+      action: "edit-stay",
+      idName: "stay-id",
+      label: "Azioni soggiorno"
+    },
+    activities: {
+      action: "edit-activity",
+      idName: "activity-id",
+      label: "Azioni attivita"
+    }
+  };
+  const editAction = editActions[item.source];
+
+  if (!editAction) {
+    return "";
+  }
+
   return `
-    <div class="trip-card__actions" aria-label="Azioni spesa manuale">
-      <button class="button button--small button--ghost" type="button" data-action="edit-expense" data-expense-id="${escapeHtml(item.id)}">Modifica</button>
-      <button class="button button--small button--danger-ghost" type="button" data-action="delete-expense" data-expense-id="${escapeHtml(item.id)}">Elimina</button>
+    <div class="trip-card__actions" aria-label="${editAction.label}">
+      <button class="button button--small button--ghost" type="button" data-action="${editAction.action}" data-${editAction.idName}="${escapeHtml(item.id)}">Modifica</button>
+      ${item.source === "expenses" ? `<button class="button button--small button--danger-ghost" type="button" data-action="delete-expense" data-expense-id="${escapeHtml(item.id)}">Elimina</button>` : ""}
     </div>
   `;
 }
@@ -736,6 +765,7 @@ function ensureBudgetHandlers() {
 
 export function renderBudgetView({ params }) {
   ensureBudgetHandlers();
+  ensureDashboardHandlers();
 
   const trip = getTripById(params.tripId);
 

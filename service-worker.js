@@ -1,4 +1,4 @@
-const CACHE_NAME = "ithaca-shell-v20";
+const CACHE_NAME = "ithaca-shell-v20-3";
 
 const APP_SHELL = [
   "./",
@@ -7,6 +7,7 @@ const APP_SHELL = [
   "./assets/icons/favicon.svg",
   "./assets/icons/icon-192.svg",
   "./assets/icons/icon-512.svg",
+  "./assets/brand/ithaca-logo.png",
   "./css/reset.css",
   "./css/variables.css",
   "./css/base.css",
@@ -24,7 +25,9 @@ const APP_SHELL = [
   "./js/views/notesView.js",
   "./js/components/modal.js",
   "./js/components/toast.js",
-  "./js/components/bottomNav.js"
+  "./js/components/bottomNav.js",
+  "./js/components/appBar.js",
+  "./js/components/fab.js"
 ];
 
 self.addEventListener("install", (event) => {

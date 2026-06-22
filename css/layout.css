@@ -32,9 +32,12 @@
   height: 2.5rem;
   flex: 0 0 auto;
   place-items: center;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-primary-strong), var(--color-primary-light));
-  color: #fff;
+  border-radius: var(--radius-md);
+  background:
+    url("../assets/brand/ithaca-logo.png") center / cover no-repeat,
+    linear-gradient(135deg, var(--color-primary-strong), var(--color-primary-light));
+  color: transparent;
+  font-size: 0;
   font-weight: 800;
   box-shadow: 0 0.45rem 1rem rgb(24 60 47 / 20%);
 }
