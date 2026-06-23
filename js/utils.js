@@ -44,6 +44,11 @@ export const STAY_TYPES = ["hotel", "appartamento", "bnb", "ostello", "resort", 
 
 export const ACTIVITY_TYPES = ["escursione", "visita", "ristorante", "trasporto", "altro"];
 
+export const PAYMENT_VALIDATION_MESSAGES = {
+  unpaidWithPaidAmount: 'Hai selezionato "Da pagare". Se hai gia pagato una parte, imposta lo stato su "Parziale".',
+  invalidPartial: "Per un pagamento parziale, l'importo pagato deve essere maggiore di 0 e inferiore al totale."
+};
+
 function parseDate(value) {
   if (!value) {
     return null;
@@ -304,6 +309,36 @@ export function getPaymentBreakdown(item, amountField = "cost", statusField = "p
     paidAmount: 0,
     dueAmount: totalAmount,
     status
+  };
+}
+
+export function validatePaymentAllocation({ totalAmount = 0, paymentStatus = "unpaid", paidAmount = 0 } = {}) {
+  const safeTotal = normalizeLedgerAmount(totalAmount);
+  const status = DOSSIER_PAYMENT_STATUSES.includes(paymentStatus) ? paymentStatus : "unpaid";
+  const safePaid = normalizeLedgerAmount(paidAmount);
+
+  if (status === "unpaid") {
+    return {
+      error: safePaid > 0 ? PAYMENT_VALIDATION_MESSAGES.unpaidWithPaidAmount : "",
+      paidAmount: 0,
+      paymentStatus: status
+    };
+  }
+
+  if (status === "partial") {
+    const isValidPartial = safePaid > 0 && safePaid < safeTotal;
+
+    return {
+      error: isValidPartial ? "" : PAYMENT_VALIDATION_MESSAGES.invalidPartial,
+      paidAmount: Math.min(safePaid, safeTotal),
+      paymentStatus: status
+    };
+  }
+
+  return {
+    error: "",
+    paidAmount: safeTotal,
+    paymentStatus: status
   };
 }
 

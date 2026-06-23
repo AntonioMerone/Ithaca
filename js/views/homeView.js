@@ -28,6 +28,10 @@ import {
 } from "../utils.js";
 
 const DEFAULT_CURRENCY = "EUR";
+const SUPPORTED_CURRENCIES = [
+  ["EUR", "EUR - Euro (€)"],
+  ["USD", "USD - Dollaro USA ($)"]
+];
 let homeHandlersReady = false;
 let pendingImportText = "";
 
@@ -168,7 +172,7 @@ function validateTripForm(formData, trip = null) {
     errors.budgetTotal = "Budget totale deve essere un numero maggiore o uguale a 0.";
   }
 
-  if (!currency) {
+  if (!SUPPORTED_CURRENCIES.some(([value]) => value === currency)) {
     errors.currency = "Valuta obbligatoria.";
   }
 
@@ -277,6 +281,9 @@ function renderDestinationsFormSection(trip, errors) {
 function renderTripForm({ trip = null, errors = {}, modeOverride = null } = {}) {
   const mode = modeOverride || (trip?.id ? "edit" : "create");
   const submitLabel = mode === "edit" ? "Salva modifiche" : "Crea viaggio";
+  const selectedCurrency = SUPPORTED_CURRENCIES.some(([value]) => value === String(trip?.currency || "").toUpperCase())
+    ? String(trip?.currency || "").toUpperCase()
+    : DEFAULT_CURRENCY;
 
   return `
     <form class="trip-form" id="trip-form" novalidate>
@@ -315,7 +322,11 @@ function renderTripForm({ trip = null, errors = {}, modeOverride = null } = {}) 
 
         <div class="form-field">
           <label for="trip-currency">Valuta</label>
-          <input id="trip-currency" name="currency" type="text" maxlength="3" value="${escapeHtml(trip?.currency || DEFAULT_CURRENCY)}" required>
+          <select id="trip-currency" name="currency" required>
+            ${SUPPORTED_CURRENCIES.map(([value, label]) => `
+              <option value="${value}" ${selectedCurrency === value ? "selected" : ""}>${label}</option>
+            `).join("")}
+          </select>
           ${fieldError(errors, "currency")}
         </div>
       </div>
@@ -339,6 +350,17 @@ export function openTripForm(trip = null, errors = {}, modeOverride = null) {
     content: renderTripForm({ trip, errors, modeOverride }),
     confirmOnDirty: true
   });
+}
+
+function replaceOpenTripForm(trip = null, errors = {}, modeOverride = null) {
+  const modalBody = document.querySelector("#modal-root .modal__body");
+
+  if (!modalBody) {
+    openTripForm(trip, errors, modeOverride);
+    return;
+  }
+
+  modalBody.innerHTML = renderTripForm({ trip, errors, modeOverride });
 }
 
 function openDeleteConfirmation(trip) {
@@ -493,7 +515,7 @@ function updateDestinationsInOpenForm(actionTarget) {
     [destinations[index + 1], destinations[index]] = [destinations[index], destinations[index + 1]];
   }
 
-  openTripForm({
+  replaceOpenTripForm({
     ...draft,
     destinations: destinations.length > 0 ? destinations : [createBlankDestination()]
   }, {}, draft.mode);
@@ -550,7 +572,10 @@ function handleHomeClick(event) {
     "move-destination-up",
     "move-destination-down"
   ].includes(action)) {
+    event.preventDefault();
+    event.stopPropagation();
     updateDestinationsInOpenForm(actionTarget);
+    return;
   }
 
   if (action === "edit-trip") {

@@ -52,7 +52,8 @@ import {
   isChecklistItemOverdue,
   normalizeDestinations,
   sortNotes,
-  sortTimelineItems
+  sortTimelineItems,
+  validatePaymentAllocation
 } from "../utils.js";
 
 let dashboardHandlersReady = false;
@@ -195,6 +196,7 @@ function handleDashboardFormInput(event) {
 
   if (form) {
     updateZeroCostWarning(form);
+    updatePaidAmountField(form);
   }
 }
 
@@ -1303,6 +1305,31 @@ function renderZeroCostWarning(costValue, paymentStatus) {
   return `<p class="form-warning" data-zero-cost-warning${hidden}>${ZERO_COST_WARNING_COPY}</p>`;
 }
 
+function isPaidAmountVisible(paymentStatus) {
+  return paymentStatus === "partial";
+}
+
+function normalizeFormCost(value) {
+  const amount = Number(value || 0);
+  return Number.isFinite(amount) && amount >= 0 ? amount : 0;
+}
+
+function renderPaidAmountAttributes(paymentStatus) {
+  return isPaidAmountVisible(paymentStatus) ? "" : " disabled";
+}
+
+function getPaidAmountFieldValue(paymentStatus, costValue, paidAmount) {
+  if (paymentStatus === "paid") {
+    return normalizeFormCost(costValue);
+  }
+
+  if (paymentStatus === "unpaid") {
+    return 0;
+  }
+
+  return paidAmount || "";
+}
+
 function updateZeroCostWarning(form) {
   const warning = form.querySelector("[data-zero-cost-warning]");
 
@@ -1311,6 +1338,27 @@ function updateZeroCostWarning(form) {
   }
 
   warning.hidden = !shouldShowZeroCostWarning(form.elements.cost?.value, form.elements.paymentStatus?.value);
+}
+
+function updatePaidAmountField(form) {
+  const field = form.querySelector("[data-paid-amount-field]");
+  const input = form.elements.paidAmount;
+
+  if (!field || !input) {
+    return;
+  }
+
+  const paymentStatus = form.elements.paymentStatus?.value || "unpaid";
+  field.hidden = !isPaidAmountVisible(paymentStatus);
+  input.disabled = !isPaidAmountVisible(paymentStatus);
+
+  if (paymentStatus === "unpaid") {
+    input.value = "0";
+  }
+
+  if (paymentStatus === "paid") {
+    input.value = String(normalizeFormCost(form.elements.cost?.value));
+  }
 }
 
 function parseOptionalCost(value) {
@@ -1427,9 +1475,9 @@ function renderFlightForm({ trip, flight = null, errors = {}, modeOverride = nul
         </div>
       </div>
 
-      <div class="form-field">
+      <div class="form-field" data-paid-amount-field ${isPaidAmountVisible(flight?.paymentStatus || "unpaid") ? "" : "hidden"}>
         <label for="flight-paid-amount-input">Importo pagato, se parziale</label>
-        <input id="flight-paid-amount-input" name="paidAmount" type="number" min="0" step="0.01" value="${escapeHtml(flight?.paidAmount || "")}">
+        <input id="flight-paid-amount-input" name="paidAmount" type="number" min="0" step="0.01" value="${escapeHtml(getPaidAmountFieldValue(flight?.paymentStatus || "unpaid", flight?.cost ?? "", flight?.paidAmount))}"${renderPaidAmountAttributes(flight?.paymentStatus || "unpaid")}>
         ${fieldError(errors, "paidAmount")}
       </div>
       ${renderZeroCostWarning(flight?.cost ?? "", flight?.paymentStatus || "unpaid")}
@@ -1450,6 +1498,7 @@ function renderFlightForm({ trip, flight = null, errors = {}, modeOverride = nul
 function validateFlightForm(formData) {
   const cost = parseOptionalCost(formData.get("cost"));
   const paidAmount = parseOptionalCost(formData.get("paidAmount"));
+  const paymentStatus = DOSSIER_PAYMENT_STATUSES.includes(formData.get("paymentStatus")) ? formData.get("paymentStatus") : "unpaid";
   const errors = {};
 
   if (Number.isNaN(cost) || cost < 0) {
@@ -1458,6 +1507,16 @@ function validateFlightForm(formData) {
 
   if (Number.isNaN(paidAmount) || paidAmount < 0) {
     errors.paidAmount = "Importo pagato deve essere un numero maggiore o uguale a 0.";
+  }
+
+  const paymentValidation = validatePaymentAllocation({
+    totalAmount: Number.isNaN(cost) ? 0 : cost,
+    paymentStatus,
+    paidAmount
+  });
+
+  if (!errors.paidAmount && paymentValidation.error) {
+    errors.paidAmount = paymentValidation.error;
   }
 
   return {
@@ -1475,8 +1534,8 @@ function validateFlightForm(formData) {
       bookingNumber: String(formData.get("bookingNumber") || "").trim(),
       baggage: String(formData.get("baggage") || "").trim(),
       cost: Number.isNaN(cost) ? 0 : cost,
-      paymentStatus: DOSSIER_PAYMENT_STATUSES.includes(formData.get("paymentStatus")) ? formData.get("paymentStatus") : "unpaid",
-      paidAmount: Number.isNaN(paidAmount) ? 0 : Math.min(paidAmount, Number.isNaN(cost) ? 0 : cost),
+      paymentStatus,
+      paidAmount: Number.isNaN(paidAmount) ? 0 : paymentValidation.paidAmount,
       notes: String(formData.get("notes") || "").trim()
     }
   };
@@ -1595,9 +1654,9 @@ function renderStayForm({ trip, stay = null, errors = {}, modeOverride = null } 
         </div>
       </div>
 
-      <div class="form-field">
+      <div class="form-field" data-paid-amount-field ${isPaidAmountVisible(stay?.paymentStatus || "unpaid") ? "" : "hidden"}>
         <label for="stay-paid-amount-input">Importo pagato, se parziale</label>
-        <input id="stay-paid-amount-input" name="paidAmount" type="number" min="0" step="0.01" value="${escapeHtml(stay?.paidAmount || "")}">
+        <input id="stay-paid-amount-input" name="paidAmount" type="number" min="0" step="0.01" value="${escapeHtml(getPaidAmountFieldValue(stay?.paymentStatus || "unpaid", stay?.cost ?? "", stay?.paidAmount))}"${renderPaidAmountAttributes(stay?.paymentStatus || "unpaid")}>
         ${fieldError(errors, "paidAmount")}
       </div>
       ${renderZeroCostWarning(stay?.cost ?? "", stay?.paymentStatus || "unpaid")}
@@ -1623,6 +1682,7 @@ function renderStayForm({ trip, stay = null, errors = {}, modeOverride = null } 
 function validateStayForm(formData) {
   const cost = parseOptionalCost(formData.get("cost"));
   const paidAmount = parseOptionalCost(formData.get("paidAmount"));
+  const paymentStatus = DOSSIER_PAYMENT_STATUSES.includes(formData.get("paymentStatus")) ? formData.get("paymentStatus") : "unpaid";
   const errors = {};
   const checkInDate = String(formData.get("checkInDate") || "").trim();
   const checkOutDate = String(formData.get("checkOutDate") || "").trim();
@@ -1633,6 +1693,16 @@ function validateStayForm(formData) {
 
   if (Number.isNaN(paidAmount) || paidAmount < 0) {
     errors.paidAmount = "Importo pagato deve essere un numero maggiore o uguale a 0.";
+  }
+
+  const paymentValidation = validatePaymentAllocation({
+    totalAmount: Number.isNaN(cost) ? 0 : cost,
+    paymentStatus,
+    paidAmount
+  });
+
+  if (!errors.paidAmount && paymentValidation.error) {
+    errors.paidAmount = paymentValidation.error;
   }
 
   if (checkInDate && checkOutDate && checkOutDate < checkInDate) {
@@ -1649,8 +1719,8 @@ function validateStayForm(formData) {
       checkOutDate,
       bookingNumber: String(formData.get("bookingNumber") || "").trim(),
       cost: Number.isNaN(cost) ? 0 : cost,
-      paymentStatus: DOSSIER_PAYMENT_STATUSES.includes(formData.get("paymentStatus")) ? formData.get("paymentStatus") : "unpaid",
-      paidAmount: Number.isNaN(paidAmount) ? 0 : Math.min(paidAmount, Number.isNaN(cost) ? 0 : cost),
+      paymentStatus,
+      paidAmount: Number.isNaN(paidAmount) ? 0 : paymentValidation.paidAmount,
       mealsNotes: String(formData.get("mealsNotes") || "").trim(),
       notes: String(formData.get("notes") || "").trim()
     }
@@ -1772,9 +1842,9 @@ function renderActivityForm({ trip, activity = null, errors = {}, modeOverride =
         </div>
       </div>
 
-      <div class="form-field">
+      <div class="form-field" data-paid-amount-field ${isPaidAmountVisible(activity?.paymentStatus || "unpaid") ? "" : "hidden"}>
         <label for="activity-paid-amount-input">Importo pagato, se parziale</label>
-        <input id="activity-paid-amount-input" name="paidAmount" type="number" min="0" step="0.01" value="${escapeHtml(activity?.paidAmount || "")}">
+        <input id="activity-paid-amount-input" name="paidAmount" type="number" min="0" step="0.01" value="${escapeHtml(getPaidAmountFieldValue(activity?.paymentStatus || "unpaid", activity?.cost ?? "", activity?.paidAmount))}"${renderPaidAmountAttributes(activity?.paymentStatus || "unpaid")}>
         ${fieldError(errors, "paidAmount")}
       </div>
       ${renderZeroCostWarning(activity?.cost ?? "", activity?.paymentStatus || "unpaid")}
@@ -1795,6 +1865,7 @@ function renderActivityForm({ trip, activity = null, errors = {}, modeOverride =
 function validateActivityForm(formData) {
   const cost = parseOptionalCost(formData.get("cost"));
   const paidAmount = parseOptionalCost(formData.get("paidAmount"));
+  const paymentStatus = DOSSIER_PAYMENT_STATUSES.includes(formData.get("paymentStatus")) ? formData.get("paymentStatus") : "unpaid";
   const errors = {};
 
   if (Number.isNaN(cost) || cost < 0) {
@@ -1803,6 +1874,16 @@ function validateActivityForm(formData) {
 
   if (Number.isNaN(paidAmount) || paidAmount < 0) {
     errors.paidAmount = "Importo pagato deve essere un numero maggiore o uguale a 0.";
+  }
+
+  const paymentValidation = validatePaymentAllocation({
+    totalAmount: Number.isNaN(cost) ? 0 : cost,
+    paymentStatus,
+    paidAmount
+  });
+
+  if (!errors.paidAmount && paymentValidation.error) {
+    errors.paidAmount = paymentValidation.error;
   }
 
   return {
@@ -1816,8 +1897,8 @@ function validateActivityForm(formData) {
       location: String(formData.get("location") || "").trim(),
       bookingNumber: String(formData.get("bookingNumber") || "").trim(),
       cost: Number.isNaN(cost) ? 0 : cost,
-      paymentStatus: DOSSIER_PAYMENT_STATUSES.includes(formData.get("paymentStatus")) ? formData.get("paymentStatus") : "unpaid",
-      paidAmount: Number.isNaN(paidAmount) ? 0 : Math.min(paidAmount, Number.isNaN(cost) ? 0 : cost),
+      paymentStatus,
+      paidAmount: Number.isNaN(paidAmount) ? 0 : paymentValidation.paidAmount,
       notes: String(formData.get("notes") || "").trim()
     }
   };

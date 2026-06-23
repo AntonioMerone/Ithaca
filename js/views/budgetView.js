@@ -25,7 +25,8 @@ import {
   getExpenseCategoryLabel,
   getExpenseStatusLabel,
   getPaymentBreakdown,
-  getStayTypeLabel
+  getStayTypeLabel,
+  validatePaymentAllocation
 } from "../utils.js";
 
 const budgetFilters = new Map();
@@ -493,6 +494,30 @@ function renderZeroCostWarning(amountValue, status) {
   return `<p class="form-warning" data-zero-cost-warning${hidden}>${ZERO_COST_WARNING_COPY}</p>`;
 }
 
+function isPaidAmountVisible(status) {
+  return status === "partial";
+}
+
+function renderPaidAmountAttributes(status, amountValue) {
+  if (isPaidAmountVisible(status)) {
+    return "";
+  }
+
+  return " disabled";
+}
+
+function getPaidAmountFieldValue(status, amountValue, paidAmount) {
+  if (status === "paid") {
+    return normalizeCost(amountValue);
+  }
+
+  if (status === "unpaid") {
+    return 0;
+  }
+
+  return paidAmount || "";
+}
+
 function updateZeroCostWarning(form) {
   const warning = form.querySelector("[data-zero-cost-warning]");
 
@@ -501,6 +526,27 @@ function updateZeroCostWarning(form) {
   }
 
   warning.hidden = !shouldShowZeroCostWarning(form.elements.amount?.value, form.elements.status?.value);
+}
+
+function updatePaidAmountField(form) {
+  const field = form.querySelector("[data-paid-amount-field]");
+  const input = form.elements.paidAmount;
+
+  if (!field || !input) {
+    return;
+  }
+
+  const status = form.elements.status?.value || "unpaid";
+  field.hidden = !isPaidAmountVisible(status);
+  input.disabled = !isPaidAmountVisible(status);
+
+  if (status === "unpaid") {
+    input.value = "0";
+  }
+
+  if (status === "paid") {
+    input.value = String(normalizeCost(form.elements.amount?.value));
+  }
 }
 
 function renderExpenseForm({ tripId, expense = null, errors = {}, modeOverride = null } = {}) {
@@ -549,9 +595,9 @@ function renderExpenseForm({ tripId, expense = null, errors = {}, modeOverride =
           ${fieldError(errors, "status")}
         </div>
 
-        <div class="form-field">
+        <div class="form-field" data-paid-amount-field ${isPaidAmountVisible(expense?.status || "unpaid") ? "" : "hidden"}>
           <label for="expense-paid-amount">Importo pagato, se parziale</label>
-          <input id="expense-paid-amount" name="paidAmount" type="number" min="0" step="0.01" value="${escapeHtml(expense?.paidAmount || "")}">
+          <input id="expense-paid-amount" name="paidAmount" type="number" min="0" step="0.01" value="${escapeHtml(getPaidAmountFieldValue(expense?.status || "unpaid", expense?.amount ?? "", expense?.paidAmount))}"${renderPaidAmountAttributes(expense?.status || "unpaid", expense?.amount ?? "")}>
           ${fieldError(errors, "paidAmount")}
         </div>
       </div>
@@ -608,6 +654,16 @@ function validateExpenseForm(formData) {
     errors.paidAmount = "Importo pagato deve essere un numero maggiore o uguale a 0.";
   }
 
+  const paymentValidation = validatePaymentAllocation({
+    totalAmount: Number.isFinite(amount) ? amount : 0,
+    paymentStatus: status,
+    paidAmount
+  });
+
+  if (!errors.paidAmount && paymentValidation.error) {
+    errors.paidAmount = paymentValidation.error;
+  }
+
   return {
     errors,
     values: {
@@ -615,7 +671,7 @@ function validateExpenseForm(formData) {
       amount,
       category,
       status,
-      paidAmount: Number.isNaN(paidAmount) ? 0 : Math.min(paidAmount, normalizeCost(amount)),
+      paidAmount: Number.isNaN(paidAmount) ? 0 : paymentValidation.paidAmount,
       date,
       notes
     }
@@ -742,6 +798,7 @@ function handleBudgetFormInput(event) {
 
   if (form) {
     updateZeroCostWarning(form);
+    updatePaidAmountField(form);
   }
 }
 
