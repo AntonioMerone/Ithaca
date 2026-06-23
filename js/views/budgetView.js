@@ -304,8 +304,8 @@ function renderFilters(tripId, filters) {
 function renderEmptyState() {
   return `
     <article class="empty-state">
-      <h2>Nessuna spesa ancora</h2>
-      <p>Aggiungi una spesa manuale oppure compila costi in voli, soggiorni e attivita.</p>
+      <h2>Nessuna voce nel registro</h2>
+      <p>Aggiungi una spesa o inserisci voli, soggiorni e attivita.</p>
       <button class="button button--primary" type="button" data-action="open-expense-form">Aggiungi spesa</button>
     </article>
   `;
@@ -328,6 +328,37 @@ function renderLedgerPayment(item, currency) {
       </p>
     `
     : "";
+}
+
+function getLedgerStatusClass(status) {
+  const classes = {
+    paid: "is-paid",
+    unpaid: "is-unpaid",
+    partial: "is-partial"
+  };
+
+  return classes[status] || "is-unknown";
+}
+
+function getLedgerAmountClass(status) {
+  const classes = {
+    paid: "expense-card__amount--paid",
+    unpaid: "expense-card__amount--unpaid",
+    partial: "expense-card__amount--partial"
+  };
+
+  return classes[status] || "";
+}
+
+function getLedgerSourceIcon(source) {
+  const icons = {
+    flights: `<svg viewBox="0 0 24 24"><path d="M3 12h18M12 3l4 9-4 9-4-9 4-9Z"/></svg>`,
+    stays: `<svg viewBox="0 0 24 24"><path d="M4 11h16v8M6 11V7h12v4M8 15h8"/></svg>`,
+    activities: `<svg viewBox="0 0 24 24"><path d="M12 3v18M5 8h14M7 16h10"/></svg>`,
+    expenses: `<svg viewBox="0 0 24 24"><path d="M12 3v18M7 7h8a3 3 0 0 1 0 6H7m0 0h9a3 3 0 0 1 0 6H7"/></svg>`
+  };
+
+  return icons[source] || icons.expenses;
 }
 
 function getLedgerDateLabel(item) {
@@ -375,36 +406,38 @@ function renderLedgerActions(item) {
   }
 
   return `
-    <div class="trip-card__actions" aria-label="${editAction.label}">
-      <button class="button button--small button--ghost" type="button" data-action="${editAction.action}" data-${editAction.idName}="${escapeHtml(item.id)}">Modifica</button>
-      ${item.source === "expenses" ? `<button class="button button--small button--danger-ghost" type="button" data-action="delete-expense" data-expense-id="${escapeHtml(item.id)}">Elimina</button>` : ""}
+    <div class="expense-card__actions" aria-label="${editAction.label}">
+      <button class="expense-card__edit" type="button" data-action="${editAction.action}" data-${editAction.idName}="${escapeHtml(item.id)}">Modifica</button>
+      ${item.source === "expenses" ? `<button class="expense-card__delete" type="button" data-action="delete-expense" data-expense-id="${escapeHtml(item.id)}">Elimina</button>` : ""}
     </div>
   `;
 }
 
 function renderLedgerCard(item, currency) {
   const notes = String(item.notes || "").trim();
+  const metaItems = [
+    item.date ? `${getLedgerDateLabel(item)}: ${formatDate(item.date)}` : "",
+    item.meta || ""
+  ].filter(Boolean);
 
   return `
-    <article class="expense-card expense-card--${escapeHtml(item.source)}">
+    <article class="expense-card expense-card--${escapeHtml(item.source)} ${getLedgerStatusClass(item.status)}">
       <div class="expense-card__header">
-        <p class="expense-card__meta">
+        <p class="expense-card__source">
+          <span class="expense-card__source-icon" aria-hidden="true">${getLedgerSourceIcon(item.source)}</span>
           <span>${escapeHtml(item.originLabel)}</span>
-          ${item.typeLabel ? `<span>${escapeHtml(item.typeLabel)}</span>` : ""}
+          ${item.typeLabel ? `<small>${escapeHtml(item.typeLabel)}</small>` : ""}
         </p>
+        ${renderLedgerActions(item)}
       </div>
-      <div class="expense-card__main">
-        <h2 class="expense-card__title">${escapeHtml(item.title)}</h2>
-        <p class="expense-card__status">
-          <span class="badge ${getStatusBadgeClass(item.status)}">${escapeHtml(getStatusLabel(item.status))}</span>
-          <strong>${formatCurrency(item.totalAmount, currency)}</strong>
-        </p>
+      <h2 class="expense-card__title">${escapeHtml(item.title)}</h2>
+      <div class="expense-card__money">
+        <strong class="expense-card__amount ${getLedgerAmountClass(item.status)}">${formatCurrency(item.totalAmount, currency)}</strong>
+        <span class="badge expense-card__badge ${getStatusBadgeClass(item.status)}">${escapeHtml(getStatusLabel(item.status))}</span>
       </div>
       ${renderLedgerPayment(item, currency)}
-      ${item.date ? `<p class="expense-card__date">${getLedgerDateLabel(item)}: ${formatDate(item.date)}</p>` : `<p class="expense-card__date">Senza data</p>`}
-      ${item.meta ? `<p class="expense-card__detail">${escapeHtml(item.meta)}</p>` : ""}
+      ${metaItems.length ? `<p class="expense-card__meta">${metaItems.map(escapeHtml).join(" &middot; ")}</p>` : ""}
       ${notes ? `<p class="expense-card__notes">${escapeHtml(notes)}</p>` : ""}
-      ${renderLedgerActions(item)}
     </article>
   `;
 }

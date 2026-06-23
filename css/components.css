@@ -625,6 +625,7 @@
 
 .budget-page {
   gap: var(--space-5);
+  padding-bottom: calc(var(--bottom-nav-height) + var(--space-8));
 }
 
 .timeline-page {
@@ -2203,34 +2204,45 @@
 
 .expense-list {
   display: grid;
-  gap: 0;
-  border: 1px solid rgb(216 201 172 / 82%);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  background: rgb(255 250 240 / 70%);
+  gap: var(--space-3);
 }
 
 .expense-card {
+  position: relative;
   display: grid;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  border: 0;
-  border-bottom: 1px solid rgb(216 201 172 / 72%);
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
+  overflow: hidden;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-4) var(--space-4) calc(var(--space-4) + 0.35rem);
+  border: 1px solid rgb(216 201 172 / 76%);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(180deg, rgb(255 250 240 / 98%), rgb(247 239 223 / 76%)),
+    var(--color-surface);
+  box-shadow: 0 0.6rem 1.35rem rgb(64 51 31 / 7%);
 }
 
-.expense-card:last-child {
-  border-bottom: 0;
+.expense-card::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0.25rem;
+  background: color-mix(in srgb, var(--color-border-strong) 72%, transparent);
+  content: "";
 }
 
-.expense-card--flights .expense-card__title {
-  font-family: var(--font-mono);
+.expense-card.is-paid::before {
+  background: var(--color-success);
 }
 
-.expense-card--expenses {
-  background: rgb(255 250 240 / 42%);
+.expense-card.is-unpaid::before {
+  background: var(--color-danger);
+}
+
+.expense-card.is-partial::before {
+  background: var(--color-warning);
+}
+
+.expense-card.is-unknown::before {
+  background: color-mix(in srgb, var(--color-border-strong) 72%, transparent);
 }
 
 .expense-card__header {
@@ -2317,18 +2329,152 @@
   border-top: 1px solid rgb(216 201 172 / 72%);
 }
 
+.expense-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.expense-card__source {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.38rem;
+  color: var(--color-primary-strong);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.expense-card__source small {
+  color: var(--color-text-faint);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+}
+
+.expense-card__source-icon {
+  display: inline-grid;
+  width: 1.65rem;
+  height: 1.65rem;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--color-green-100);
+  color: var(--color-primary);
+}
+
+.expense-card__source-icon svg {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.expense-card__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.expense-card__edit,
+.expense-card__delete {
+  min-height: 2rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  padding: 0.25rem 0.38rem;
+  color: var(--color-green-700);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.expense-card__delete {
+  color: var(--color-danger);
+}
+
+.expense-card__edit:hover,
+.expense-card__delete:hover {
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
+.expense-card__title {
+  color: var(--color-text);
+  font-size: 1.1rem;
+  line-height: 1.2;
+}
+
+.expense-card__money {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.expense-card__amount {
+  color: var(--color-primary-strong);
+  font-family: var(--font-display);
+  font-size: clamp(1.45rem, 4vw, 1.9rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.expense-card__amount--paid {
+  color: var(--color-success);
+}
+
+.expense-card__amount--unpaid {
+  color: var(--color-danger);
+}
+
+.expense-card__amount--partial {
+  color: var(--color-warning);
+}
+
+.expense-card__payment,
+.expense-card__meta {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.45;
+  text-transform: none;
+}
+
+.expense-card__notes {
+  margin-top: var(--space-1);
+  padding-top: var(--space-3);
+  border-top: 1px dashed rgb(216 201 172 / 82%);
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+  font-style: italic;
+  line-height: 1.45;
+}
+
 .badge {
   display: inline-flex;
   width: fit-content;
   align-items: center;
-  min-height: 1.55rem;
-  padding: 0.2rem 0.55rem;
+  min-height: 1.5rem;
+  padding: 0.25rem 0.55rem;
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--color-border) 66%, transparent);
   background: var(--color-surface-muted);
   color: var(--color-primary);
-  font-size: 0.72rem;
-  font-weight: 900;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .badge--success {
