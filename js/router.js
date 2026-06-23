@@ -104,6 +104,20 @@ function renderNotFound(hash) {
   `;
 }
 
+function renderRouteStatus(routeStatus, routeName) {
+  if (routeName === "Home") {
+    routeStatus.classList.add("app-header__status--actions");
+    routeStatus.innerHTML = `
+      <span class="app-header__status-label">Home</span>
+      <button class="button button--ghost button--small app-header__data-button" type="button" data-action="open-data-management">Gestione dati</button>
+    `;
+    return;
+  }
+
+  routeStatus.classList.remove("app-header__status--actions");
+  routeStatus.textContent = routeName;
+}
+
 export function initRouter({ app, routeStatus }) {
   function render() {
     const hash = getCurrentHash();
@@ -112,7 +126,7 @@ export function initRouter({ app, routeStatus }) {
     if (!route) {
       app.classList.remove("has-bottom-nav");
       app.innerHTML = renderNotFound(hash);
-      routeStatus.textContent = "Non trovata";
+      renderRouteStatus(routeStatus, "Non trovata");
       app.focus({ preventScroll: true });
       return;
     }
@@ -124,7 +138,7 @@ export function initRouter({ app, routeStatus }) {
 
     app.classList.toggle("has-bottom-nav", Boolean(showTripNav));
     app.innerHTML = viewHtml + navHtml + fabHtml;
-    routeStatus.textContent = route.name;
+    renderRouteStatus(routeStatus, route.name);
     app.focus({ preventScroll: true });
   }
 

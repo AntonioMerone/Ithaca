@@ -68,6 +68,23 @@
   white-space: nowrap;
 }
 
+.app-header__status--actions {
+  display: flex;
+  max-width: none;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.app-header__data-button {
+  min-height: 2rem;
+  padding: 0.42rem 0.65rem;
+  font-size: 0.72rem;
+}
+
 .app-main {
   width: 100%;
   max-width: var(--content-max-width);

@@ -1,5 +1,4 @@
 import { closeModal, markModalDirty, openModal } from "../components/modal.js";
-import { renderAppBar } from "../components/appBar.js";
 import { showToast } from "../components/toast.js";
 import {
   createBackupPayload,
@@ -725,10 +724,6 @@ export function renderHomeView() {
 
   return `
     <section class="page" aria-labelledby="home-title">
-      ${renderAppBar({
-        subtitle: "Il dossier digitale",
-        actionHtml: `<button class="button button--ghost button--small" type="button" data-action="open-data-management">Gestione dati</button>`
-      })}
       <header class="page__header home-hero">
         <div>
           <p class="page__eyebrow">Dossier viaggio</p>
