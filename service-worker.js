@@ -1,12 +1,16 @@
-const CACHE_NAME = "ithaca-shell-v21-1";
+const CACHE_NAME = "ithaca-shell-v21-2";
 
 const APP_SHELL = [
   "./",
   "./index.html",
   "./manifest.json",
-  "./assets/icons/favicon.svg",
-  "./assets/icons/icon-192.svg",
-  "./assets/icons/icon-512.svg",
+  "./favicon.ico",
+  "./assets/icons/favicon-32x32.png",
+  "./assets/icons/apple-touch-icon.png",
+  "./assets/icons/icon-192.png",
+  "./assets/icons/icon-512.png",
+  "./assets/icons/maskable-192.png",
+  "./assets/icons/maskable-512.png",
   "./assets/brand/ithaca-logo.png",
   "./css/reset.css",
   "./css/variables.css",
