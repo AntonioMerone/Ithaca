@@ -25,7 +25,6 @@ import {
   getExpenseCategoryLabel,
   getExpenseStatusLabel,
   getPaymentBreakdown,
-  getStayTypeLabel,
   validatePaymentAllocation
 } from "../utils.js";
 
@@ -111,7 +110,13 @@ function cleanLabel(value) {
 function getManualExpenseTypeLabel(category) {
   const normalizedCategory = cleanLabel(category);
 
-  return normalizedCategory ? getExpenseCategoryLabel(normalizedCategory) : "";
+  if (!normalizedCategory) {
+    return "";
+  }
+
+  return EXPENSE_CATEGORIES.includes(normalizedCategory)
+    ? getExpenseCategoryLabel(normalizedCategory)
+    : normalizedCategory;
 }
 
 function getFlightLedgerCopy(flight) {
@@ -186,8 +191,8 @@ function buildLedgerItems({ expenses, flights, stays, activities }) {
       status: breakdown.status,
       date: stay.checkInDate || "",
       createdAt: stay.createdAt || "",
-      meta: stay.bookingNumber ? `Prenotazione ${stay.bookingNumber}` : getStayTypeLabel(stay.structureType),
-      typeLabel: getStayTypeLabel(stay.structureType),
+      meta: stay.bookingNumber ? `Prenotazione ${stay.bookingNumber}` : "",
+      typeLabel: "",
       notes: stay.notes || "",
       editable: true
     };
@@ -307,7 +312,7 @@ function renderEmptyState() {
     <article class="empty-state">
       <h2>Nessuna voce nel registro</h2>
       <p>Aggiungi una spesa o inserisci voli, soggiorni e attivita.</p>
-      <button class="button button--primary" type="button" data-action="open-expense-form">Aggiungi spesa</button>
+      <button class="button button--primary" type="button" data-action="open-expense-form">Aggiungi budget</button>
     </article>
   `;
 }
@@ -551,7 +556,7 @@ function updatePaidAmountField(form) {
 
 function renderExpenseForm({ tripId, expense = null, errors = {}, modeOverride = null } = {}) {
   const mode = modeOverride || (expense?.id ? "edit" : "create");
-  const submitLabel = mode === "edit" ? "Salva modifiche" : "Aggiungi spesa";
+  const submitLabel = mode === "edit" ? "Salva modifiche" : "Aggiungi budget";
 
   return `
     <form class="trip-form" id="expense-form" novalidate>
@@ -569,11 +574,7 @@ function renderExpenseForm({ tripId, expense = null, errors = {}, modeOverride =
       <div class="form-grid">
         <div class="form-field">
           <label for="expense-category">Categoria</label>
-          <select id="expense-category" name="category" required>
-            ${EXPENSE_CATEGORIES.map((category) => `
-              <option value="${category}" ${expense?.category === category ? "selected" : ""}>${getExpenseCategoryLabel(category)}</option>
-            `).join("")}
-          </select>
+          <input id="expense-category" name="category" type="text" value="${escapeHtml(expense?.category || "")}" autocomplete="off" required>
           ${fieldError(errors, "category")}
         </div>
 
@@ -642,7 +643,7 @@ function validateExpenseForm(formData) {
     errors.amount = "Importo deve essere un numero maggiore o uguale a 0.";
   }
 
-  if (!EXPENSE_CATEGORIES.includes(category)) {
+  if (!category) {
     errors.category = "Categoria obbligatoria.";
   }
 
@@ -680,7 +681,7 @@ function validateExpenseForm(formData) {
 
 function openExpenseForm(tripId, expense = null, errors = {}, modeOverride = null) {
   openModal({
-    title: modeOverride === "create" || !expense?.id ? "Aggiungi spesa" : "Modifica spesa",
+    title: modeOverride === "create" || !expense?.id ? "Aggiungi budget" : "Modifica budget",
     content: renderExpenseForm({ tripId, expense, errors, modeOverride }),
     confirmOnDirty: true
   });
@@ -828,10 +829,10 @@ function handleExpenseFormSubmit(event) {
 
   if (mode === "edit") {
     updateExpense(expenseId, values);
-    showToast("Spesa aggiornata.");
+    showToast("Budget aggiornato.");
   } else {
     createExpense({ ...values, tripId });
-    showToast("Spesa aggiunta.");
+    showToast("Budget aggiunto.");
   }
 
   closeModal();
@@ -892,7 +893,7 @@ export function renderBudgetView({ params }) {
       </section>
 
       <div class="budget-toolbar">
-        <button class="button button--primary" type="button" data-action="open-expense-form" data-trip-id="${escapeHtml(trip.id)}">Aggiungi spesa</button>
+        <button class="button button--primary" type="button" data-action="open-expense-form" data-trip-id="${escapeHtml(trip.id)}">Aggiungi budget</button>
         ${renderFilters(trip.id, filters)}
       </div>
 

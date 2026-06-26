@@ -73,6 +73,7 @@ function normalizeData(data) {
 
 function normalizeFlight(flight) {
   const source = flight && typeof flight === "object" ? flight : {};
+  const stopover = source.stopover && typeof source.stopover === "object" ? source.stopover : {};
 
   return {
     ...source,
@@ -87,6 +88,11 @@ function normalizeFlight(flight) {
     arrivalTime: String(source.arrivalTime || ""),
     airline: String(source.airline || ""),
     flightNumber: String(source.flightNumber || ""),
+    stopover: {
+      location: String(stopover.location || source.stopoverLocation || ""),
+      date: String(stopover.date || source.stopoverDate || ""),
+      time: String(stopover.time || source.stopoverTime || "")
+    },
     bookingNumber: String(source.bookingNumber || ""),
     baggage: String(source.baggage || ""),
     cost: normalizeMoney(source.cost),

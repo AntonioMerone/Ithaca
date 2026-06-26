@@ -26,8 +26,6 @@ import { openTripForm } from "./homeView.js";
 import {
   ACTIVITY_TYPES,
   DOSSIER_PAYMENT_STATUSES,
-  FLIGHT_TYPES,
-  STAY_TYPES,
   calculateChecklistSummary,
   calculateCountdown,
   calculateDossierBudgetSummary,
@@ -42,13 +40,11 @@ import {
   getDaysUntilTrip,
   getDossierPaymentStatusBadge,
   getDossierPaymentStatusLabel,
-  getFlightTypeLabel,
   getNextTimelineItem,
   getNoteDestinations,
   getNotePreview,
   getOpenChecklistItems,
   getPaymentBreakdown,
-  getStayTypeLabel,
   isChecklistItemOverdue,
   normalizeDestinations,
   sortNotes,
@@ -188,11 +184,16 @@ function handleDashboardSubmit(event) {
 }
 
 function handleDashboardFormInput(event) {
-  if (!["cost", "paymentStatus"].includes(event.target.name)) {
+  const form = event.target.closest("#flight-form, #stay-form, #activity-form");
+
+  if (event.target.name === "stopoverEnabled" && form) {
+    updateStopoverFields(form);
     return;
   }
 
-  const form = event.target.closest("#flight-form, #stay-form, #activity-form");
+  if (!["cost", "paymentStatus"].includes(event.target.name)) {
+    return;
+  }
 
   if (form) {
     updateZeroCostWarning(form);
@@ -708,6 +709,12 @@ function renderFlightCard(flight, currency) {
   const from = flight.from || "Da definire";
   const to = flight.to || "Da definire";
   const route = [flight.from, flight.to].filter(Boolean).map(escapeHtml).join(" &rarr; ") || "Tratta da completare";
+  const stopover = flight.stopover && typeof flight.stopover === "object" ? flight.stopover : {};
+  const stopoverParts = [
+    stopover.location ? `Scalo: ${stopover.location}` : "",
+    stopover.date ? formatDate(stopover.date) : "",
+    stopover.time || ""
+  ].filter(Boolean);
   const flightIdentity = [
     flight.airline,
     flight.flightNumber
@@ -724,7 +731,7 @@ function renderFlightCard(flight, currency) {
   return `
     <article class="dossier-card dossier-card--flight">
       <div class="dossier-card__topline">
-        <p class="dossier-card__eyebrow">${escapeHtml(getFlightTypeLabel(flight.type))}</p>
+        <p class="dossier-card__eyebrow">Volo</p>
       </div>
       <div class="flight-ticket__route" aria-label="${escapeHtml(route)}">
         <div class="flight-ticket__point">
@@ -739,6 +746,7 @@ function renderFlightCard(flight, currency) {
       </div>
       ${dateLine ? `<p class="dossier-card__meta flight-ticket__time">${dateLine}</p>` : ""}
       ${flightIdentity ? `<p class="dossier-card__meta flight-ticket__identity">${escapeHtml(flightIdentity)}</p>` : ""}
+      ${stopoverParts.length ? `<p class="dossier-card__meta">${stopoverParts.map(escapeHtml).join(" &middot; ")}</p>` : ""}
       ${referenceParts.length ? `<p class="dossier-card__meta flight-ticket__details">${referenceParts.map(escapeHtml).join(" &middot; ")}</p>` : ""}
       ${flight.notes ? `<p class="dossier-card__notes">${escapeHtml(flight.notes)}</p>` : ""}
       <div class="flight-ticket__footer">
@@ -758,7 +766,6 @@ function renderStayCard(stay, trip) {
   const title = stay.structureName || "Soggiorno da completare";
   const referenceParts = [
     destinationName ? `Destinazione: ${destinationName}` : "",
-    `Tipo: ${getStayTypeLabel(stay.structureType)}`,
     stay.bookingNumber ? `Prenotazione ${stay.bookingNumber}` : ""
   ].filter(Boolean);
 
@@ -1330,6 +1337,35 @@ function getPaidAmountFieldValue(paymentStatus, costValue, paidAmount) {
   return paidAmount || "";
 }
 
+function hasStopover(flight) {
+  const stopover = flight?.stopover && typeof flight.stopover === "object" ? flight.stopover : {};
+
+  return Boolean(
+    stopover.location ||
+    stopover.date ||
+    stopover.time ||
+    flight?.stopoverLocation ||
+    flight?.stopoverDate ||
+    flight?.stopoverTime
+  );
+}
+
+function getStopoverValue(flight, field) {
+  const stopover = flight?.stopover && typeof flight.stopover === "object" ? flight.stopover : {};
+  const legacyField = `stopover${field.charAt(0).toUpperCase()}${field.slice(1)}`;
+
+  return stopover[field] || flight?.[legacyField] || "";
+}
+
+function updateStopoverFields(form) {
+  const fields = form.querySelector("[data-stopover-fields]");
+  const enabled = form.elements.stopoverEnabled?.checked;
+
+  if (fields) {
+    fields.hidden = !enabled;
+  }
+}
+
 function updateZeroCostWarning(form) {
   const warning = form.querySelector("[data-zero-cost-warning]");
 
@@ -1396,23 +1432,19 @@ function renderDestinationOptions(trip, selectedValue = "") {
 function renderFlightForm({ trip, flight = null, errors = {}, modeOverride = null } = {}) {
   const mode = modeOverride || (flight?.id ? "edit" : "create");
   const submitLabel = mode === "edit" ? "Salva modifiche" : "Aggiungi volo";
+  const stopoverEnabled = hasStopover(flight);
 
   return `
     <form class="trip-form dossier-form" id="flight-form" novalidate>
       <input type="hidden" name="mode" value="${mode}">
       <input type="hidden" name="tripId" value="${escapeHtml(trip.id)}">
       <input type="hidden" name="flightId" value="${flight?.id ? escapeHtml(flight.id) : ""}">
+      <input type="hidden" name="type" value="${escapeHtml(flight?.type || "altro")}">
       ${renderErrorList(errors)}
 
-      <div class="form-grid">
-        <div class="form-field">
-          <label for="flight-type-input">Tipo volo</label>
-          <select id="flight-type-input" name="type">${renderOptions(FLIGHT_TYPES, flight?.type || "altro", getFlightTypeLabel)}</select>
-        </div>
-        <div class="form-field">
-          <label for="flight-airline-input">Compagnia aerea</label>
-          <input id="flight-airline-input" name="airline" type="text" value="${escapeHtml(flight?.airline || "")}" autocomplete="off">
-        </div>
+      <div class="form-field">
+        <label for="flight-airline-input">Compagnia aerea</label>
+        <input id="flight-airline-input" name="airline" type="text" value="${escapeHtml(flight?.airline || "")}" autocomplete="off">
       </div>
 
       <div class="form-field">
@@ -1461,6 +1493,30 @@ function renderFlightForm({ trip, flight = null, errors = {}, modeOverride = nul
       <div class="form-field">
         <label for="flight-baggage-input">Bagaglio</label>
         <input id="flight-baggage-input" name="baggage" type="text" value="${escapeHtml(flight?.baggage || "")}" autocomplete="off">
+      </div>
+
+      <div class="form-field">
+        <label class="checkbox-row" for="flight-stopover-enabled-input">
+          <input id="flight-stopover-enabled-input" name="stopoverEnabled" type="checkbox" ${stopoverEnabled ? "checked" : ""}>
+          <span>Aggiungi scalo</span>
+        </label>
+      </div>
+
+      <div data-stopover-fields ${stopoverEnabled ? "" : "hidden"}>
+        <div class="form-field">
+          <label for="flight-stopover-location-input">Scalo</label>
+          <input id="flight-stopover-location-input" name="stopoverLocation" type="text" value="${escapeHtml(getStopoverValue(flight, "location"))}" autocomplete="off">
+        </div>
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="flight-stopover-date-input">Data scalo</label>
+            <input id="flight-stopover-date-input" name="stopoverDate" type="date" value="${escapeHtml(getStopoverValue(flight, "date"))}">
+          </div>
+          <div class="form-field">
+            <label for="flight-stopover-time-input">Ora scalo</label>
+            <input id="flight-stopover-time-input" name="stopoverTime" type="time" value="${escapeHtml(getStopoverValue(flight, "time"))}">
+          </div>
+        </div>
       </div>
 
       <div class="form-grid">
@@ -1522,7 +1578,7 @@ function validateFlightForm(formData) {
   return {
     errors,
     values: {
-      type: FLIGHT_TYPES.includes(formData.get("type")) ? formData.get("type") : "altro",
+      type: String(formData.get("type") || "altro"),
       airline: String(formData.get("airline") || "").trim(),
       from: String(formData.get("from") || "").trim(),
       to: String(formData.get("to") || "").trim(),
@@ -1531,6 +1587,17 @@ function validateFlightForm(formData) {
       arrivalDate: String(formData.get("arrivalDate") || "").trim(),
       arrivalTime: String(formData.get("arrivalTime") || "").trim(),
       flightNumber: String(formData.get("flightNumber") || "").trim(),
+      stopover: formData.get("stopoverEnabled")
+        ? {
+          location: String(formData.get("stopoverLocation") || "").trim(),
+          date: String(formData.get("stopoverDate") || "").trim(),
+          time: String(formData.get("stopoverTime") || "").trim()
+        }
+        : {
+          location: "",
+          date: "",
+          time: ""
+        },
       bookingNumber: String(formData.get("bookingNumber") || "").trim(),
       baggage: String(formData.get("baggage") || "").trim(),
       cost: Number.isNaN(cost) ? 0 : cost,
@@ -1607,6 +1674,7 @@ function renderStayForm({ trip, stay = null, errors = {}, modeOverride = null } 
       <input type="hidden" name="mode" value="${mode}">
       <input type="hidden" name="tripId" value="${escapeHtml(trip.id)}">
       <input type="hidden" name="stayId" value="${stay?.id ? escapeHtml(stay.id) : ""}">
+      <input type="hidden" name="structureType" value="${escapeHtml(stay?.structureType || "altro")}">
       ${renderErrorList(errors)}
 
       <div class="form-field">
@@ -1614,15 +1682,9 @@ function renderStayForm({ trip, stay = null, errors = {}, modeOverride = null } 
         <select id="stay-destination-input" name="destinationId">${renderDestinationOptions(trip, stay?.destinationId || "")}</select>
       </div>
 
-      <div class="form-grid">
-        <div class="form-field">
-          <label for="stay-name-input">Nome struttura</label>
-          <input id="stay-name-input" name="structureName" type="text" value="${escapeHtml(stay?.structureName || "")}" autocomplete="off">
-        </div>
-        <div class="form-field">
-          <label for="stay-type-input">Tipo struttura</label>
-          <select id="stay-type-input" name="structureType">${renderOptions(STAY_TYPES, stay?.structureType || "altro", getStayTypeLabel)}</select>
-        </div>
+      <div class="form-field">
+        <label for="stay-name-input">Nome struttura</label>
+        <input id="stay-name-input" name="structureName" type="text" value="${escapeHtml(stay?.structureName || "")}" autocomplete="off">
       </div>
 
       <div class="form-grid">
@@ -1714,7 +1776,7 @@ function validateStayForm(formData) {
     values: {
       destinationId: String(formData.get("destinationId") || "").trim(),
       structureName: String(formData.get("structureName") || "").trim(),
-      structureType: STAY_TYPES.includes(formData.get("structureType")) ? formData.get("structureType") : "altro",
+      structureType: String(formData.get("structureType") || "altro"),
       checkInDate,
       checkOutDate,
       bookingNumber: String(formData.get("bookingNumber") || "").trim(),

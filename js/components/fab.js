@@ -30,7 +30,7 @@ const ACTIONS = [
   {
     pattern: /^#\/trip\/([^/]+)\/budget\/?$/,
     action: "open-expense-form",
-    label: "Aggiungi spesa"
+    label: "Aggiungi budget"
   },
   {
     pattern: /^#\/trip\/([^/]+)\/timeline\/?$/,
