@@ -2,6 +2,7 @@ import { closeModal, markModalDirty, openModal } from "../components/modal.js";
 import { showToast } from "../components/toast.js";
 import {
   createBackupPayload,
+  createFlight,
   createTrip,
   deleteTrip,
   getBackupFileName,
@@ -19,12 +20,15 @@ import {
   calculateDossierBudgetSummary,
   calculateCountdown,
   calculateTripDuration,
+  DOSSIER_PAYMENT_STATUSES,
   escapeHtml,
   formatCurrency,
   formatDate,
   formatDestinationRange,
   generateId,
-  normalizeDestinations
+  getDossierPaymentStatusLabel,
+  normalizeDestinations,
+  validatePaymentAllocation
 } from "../utils.js";
 
 const DEFAULT_CURRENCY = "EUR";
@@ -45,6 +49,30 @@ function createBlankDestination() {
     hotelCheckIn: "",
     hotelCheckOut: "",
     budgetEstimate: null,
+    notes: ""
+  };
+}
+
+function createBlankInitialFlight() {
+  return {
+    id: generateId("flight_draft"),
+    type: "altro",
+    from: "",
+    to: "",
+    departureDate: "",
+    departureTime: "",
+    arrivalDate: "",
+    arrivalTime: "",
+    bookingNumber: "",
+    baggage: "",
+    cost: "",
+    paymentStatus: "unpaid",
+    paidAmount: "",
+    stopover: {
+      location: "",
+      date: "",
+      time: ""
+    },
     notes: ""
   };
 }
@@ -130,6 +158,82 @@ function parseDestinationsFromForm(formData, trip = null) {
   });
 }
 
+function parseOptionalCost(value) {
+  const rawValue = String(value ?? "").trim();
+
+  return rawValue === "" ? 0 : Number(rawValue);
+}
+
+function getInitialFlightsForForm(trip, mode = "create") {
+  if (mode !== "create") {
+    return [];
+  }
+
+  return Array.isArray(trip?.initialFlights)
+    ? trip.initialFlights.map((flight) => ({
+      ...createBlankInitialFlight(),
+      ...(flight && typeof flight === "object" ? flight : {}),
+      stopover: {
+        ...createBlankInitialFlight().stopover,
+        ...(flight?.stopover && typeof flight.stopover === "object" ? flight.stopover : {})
+      }
+    }))
+    : [];
+}
+
+function parseInitialFlightsFromForm(formData) {
+  const ids = formData.getAll("initialFlightId");
+  const fromValues = formData.getAll("initialFlightFrom");
+  const toValues = formData.getAll("initialFlightTo");
+  const departureDates = formData.getAll("initialFlightDepartureDate");
+  const departureTimes = formData.getAll("initialFlightDepartureTime");
+  const arrivalDates = formData.getAll("initialFlightArrivalDate");
+  const arrivalTimes = formData.getAll("initialFlightArrivalTime");
+  const bookingNumbers = formData.getAll("initialFlightBookingNumber");
+  const baggageValues = formData.getAll("initialFlightBaggage");
+  const costs = formData.getAll("initialFlightCost");
+  const paymentStatuses = formData.getAll("initialFlightPaymentStatus");
+  const paidAmounts = formData.getAll("initialFlightPaidAmount");
+  const stopoverEnabledValues = new Set(formData.getAll("initialFlightStopoverEnabled").map(String));
+  const stopoverLocations = formData.getAll("initialFlightStopoverLocation");
+  const stopoverDates = formData.getAll("initialFlightStopoverDate");
+  const stopoverTimes = formData.getAll("initialFlightStopoverTime");
+  const notesValues = formData.getAll("initialFlightNotes");
+
+  return ids.map((id, index) => {
+    const draftId = String(id || generateId("flight_draft"));
+    const hasStopover = stopoverEnabledValues.has(draftId);
+
+    return {
+      id: draftId,
+      type: "altro",
+      from: String(fromValues[index] || "").trim(),
+      to: String(toValues[index] || "").trim(),
+      departureDate: String(departureDates[index] || "").trim(),
+      departureTime: String(departureTimes[index] || "").trim(),
+      arrivalDate: String(arrivalDates[index] || "").trim(),
+      arrivalTime: String(arrivalTimes[index] || "").trim(),
+      bookingNumber: String(bookingNumbers[index] || "").trim(),
+      baggage: String(baggageValues[index] || "").trim(),
+      cost: String(costs[index] || "").trim(),
+      paymentStatus: DOSSIER_PAYMENT_STATUSES.includes(paymentStatuses[index]) ? paymentStatuses[index] : "unpaid",
+      paidAmount: String(paidAmounts[index] || "").trim(),
+      stopover: hasStopover
+        ? {
+          location: String(stopoverLocations[index] || "").trim(),
+          date: String(stopoverDates[index] || "").trim(),
+          time: String(stopoverTimes[index] || "").trim()
+        }
+        : {
+          location: "",
+          date: "",
+          time: ""
+        },
+      notes: String(notesValues[index] || "").trim()
+    };
+  });
+}
+
 function destinationHasAnyValue(destination) {
   return [
     destination.name,
@@ -138,11 +242,34 @@ function destinationHasAnyValue(destination) {
   ].some((value) => String(value ?? "").trim());
 }
 
+function initialFlightHasAnyValue(flight) {
+  return [
+    flight.from,
+    flight.to,
+    flight.departureDate,
+    flight.departureTime,
+    flight.arrivalDate,
+    flight.arrivalTime,
+    flight.bookingNumber,
+    flight.baggage,
+    flight.cost,
+    flight.paymentStatus !== "unpaid" ? flight.paymentStatus : "",
+    flight.paidAmount,
+    flight.stopover?.location,
+    flight.stopover?.date,
+    flight.stopover?.time,
+    flight.notes
+  ].some((value) => String(value ?? "").trim());
+}
+
 function validateTripForm(formData, trip = null) {
   const errors = {};
+  const mode = String(formData.get("mode") || "create");
   const name = String(formData.get("name") || "").trim();
   const destinationDrafts = parseDestinationsFromForm(formData, trip);
   const destinations = destinationDrafts.filter(destinationHasAnyValue);
+  const initialFlightDrafts = mode === "create" ? parseInitialFlightsFromForm(formData) : [];
+  const initialFlights = initialFlightDrafts.filter(initialFlightHasAnyValue);
   const startDate = String(formData.get("startDate") || "").trim();
   const endDate = String(formData.get("endDate") || "").trim();
   const budgetValue = String(formData.get("budgetTotal") || "").trim();
@@ -186,6 +313,33 @@ function validateTripForm(formData, trip = null) {
     }
   });
 
+  initialFlightDrafts.forEach((flight, index) => {
+    if (!initialFlightHasAnyValue(flight)) {
+      return;
+    }
+
+    const cost = parseOptionalCost(flight.cost);
+    const paidAmount = parseOptionalCost(flight.paidAmount);
+
+    if (!Number.isFinite(cost) || cost < 0) {
+      errors[`initialFlight_${index}_cost`] = `Costo volo ${index + 1} deve essere un numero maggiore o uguale a 0.`;
+    }
+
+    if (!Number.isFinite(paidAmount) || paidAmount < 0) {
+      errors[`initialFlight_${index}_paidAmount`] = `Importo pagato volo ${index + 1} deve essere un numero maggiore o uguale a 0.`;
+    }
+
+    const paymentValidation = validatePaymentAllocation({
+      totalAmount: Number.isFinite(cost) ? cost : 0,
+      paymentStatus: flight.paymentStatus,
+      paidAmount: Number.isFinite(paidAmount) ? paidAmount : 0
+    });
+
+    if (!errors[`initialFlight_${index}_paidAmount`] && paymentValidation.error) {
+      errors[`initialFlight_${index}_paidAmount`] = paymentValidation.error;
+    }
+  });
+
   return {
     errors,
     values: {
@@ -196,7 +350,9 @@ function validateTripForm(formData, trip = null) {
       budgetTotal,
       currency,
       notes
-    }
+    },
+    initialFlightDrafts,
+    initialFlights
   };
 }
 
@@ -205,12 +361,13 @@ function collectTripFormDraft(form) {
   const mode = String(formData.get("mode") || "create");
   const tripId = String(formData.get("tripId") || "");
   const currentTrip = mode === "edit" ? getTripById(tripId) : null;
-  const values = validateTripForm(formData, currentTrip).values;
+  const { values, initialFlightDrafts } = validateTripForm(formData, currentTrip);
 
   return {
     ...values,
     id: tripId,
     destinations: parseDestinationsFromForm(formData, currentTrip),
+    initialFlights: initialFlightDrafts,
     mode
   };
 }
@@ -278,6 +435,169 @@ function renderDestinationsFormSection(trip, errors) {
   `;
 }
 
+function renderPaymentOptions(selectedValue = "unpaid") {
+  return DOSSIER_PAYMENT_STATUSES.map((status) => `
+    <option value="${status}" ${selectedValue === status ? "selected" : ""}>${getDossierPaymentStatusLabel(status)}</option>
+  `).join("");
+}
+
+function isPaidAmountVisible(paymentStatus) {
+  return paymentStatus === "partial";
+}
+
+function getPaidAmountFieldValue(paymentStatus, costValue, paidAmount) {
+  if (paymentStatus === "paid") {
+    return costValue || "";
+  }
+
+  if (paymentStatus === "unpaid") {
+    return "";
+  }
+
+  return paidAmount || "";
+}
+
+function renderInitialFlightFields(flight, index, errors) {
+  const draft = {
+    ...createBlankInitialFlight(),
+    ...(flight && typeof flight === "object" ? flight : {})
+  };
+  const stopover = draft.stopover && typeof draft.stopover === "object" ? draft.stopover : {};
+  const hasStopover = Boolean(stopover.location || stopover.date || stopover.time);
+  const paymentStatus = DOSSIER_PAYMENT_STATUSES.includes(draft.paymentStatus) ? draft.paymentStatus : "unpaid";
+  const paidAmountVisible = isPaidAmountVisible(paymentStatus);
+
+  return `
+    <article class="destination-form-card initial-flight-card" data-initial-flight-index="${index}">
+      <div class="destination-form-card__header">
+        <h3>Volo ${index + 1}</h3>
+        <div class="destination-form-card__actions">
+          <button class="button button--small button--danger-ghost" type="button" data-action="remove-initial-flight" data-initial-flight-index="${index}">Rimuovi</button>
+        </div>
+      </div>
+
+      <input type="hidden" name="initialFlightId" value="${escapeHtml(draft.id || generateId("flight_draft"))}">
+
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="initial-flight-from-${index}">Da</label>
+          <input id="initial-flight-from-${index}" name="initialFlightFrom" type="text" value="${escapeHtml(draft.from || "")}" autocomplete="off">
+        </div>
+        <div class="form-field">
+          <label for="initial-flight-to-${index}">A</label>
+          <input id="initial-flight-to-${index}" name="initialFlightTo" type="text" value="${escapeHtml(draft.to || "")}" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="initial-flight-departure-date-${index}">Data partenza</label>
+          <input id="initial-flight-departure-date-${index}" name="initialFlightDepartureDate" type="date" value="${escapeHtml(draft.departureDate || "")}">
+        </div>
+        <div class="form-field">
+          <label for="initial-flight-departure-time-${index}">Ora partenza</label>
+          <input id="initial-flight-departure-time-${index}" name="initialFlightDepartureTime" type="time" value="${escapeHtml(draft.departureTime || "")}">
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="initial-flight-arrival-date-${index}">Data arrivo</label>
+          <input id="initial-flight-arrival-date-${index}" name="initialFlightArrivalDate" type="date" value="${escapeHtml(draft.arrivalDate || "")}">
+        </div>
+        <div class="form-field">
+          <label for="initial-flight-arrival-time-${index}">Ora arrivo</label>
+          <input id="initial-flight-arrival-time-${index}" name="initialFlightArrivalTime" type="time" value="${escapeHtml(draft.arrivalTime || "")}">
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="initial-flight-booking-${index}">Numero prenotazione</label>
+          <input id="initial-flight-booking-${index}" name="initialFlightBookingNumber" type="text" value="${escapeHtml(draft.bookingNumber || "")}" autocomplete="off">
+        </div>
+        <div class="form-field">
+          <label for="initial-flight-baggage-${index}">Bagaglio</label>
+          <input id="initial-flight-baggage-${index}" name="initialFlightBaggage" type="text" value="${escapeHtml(draft.baggage || "")}" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label class="checkbox-row" for="initial-flight-stopover-enabled-${index}">
+          <input id="initial-flight-stopover-enabled-${index}" name="initialFlightStopoverEnabled" type="checkbox" value="${escapeHtml(draft.id)}" ${hasStopover ? "checked" : ""}>
+          <span>Questo volo ha uno scalo</span>
+        </label>
+      </div>
+
+      <div data-stopover-fields ${hasStopover ? "" : "hidden"}>
+        <div class="form-field">
+          <label for="initial-flight-stopover-location-${index}">Scalo</label>
+          <input id="initial-flight-stopover-location-${index}" name="initialFlightStopoverLocation" type="text" value="${escapeHtml(stopover.location || "")}" autocomplete="off">
+        </div>
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="initial-flight-stopover-date-${index}">Data scalo</label>
+            <input id="initial-flight-stopover-date-${index}" name="initialFlightStopoverDate" type="date" value="${escapeHtml(stopover.date || "")}">
+          </div>
+          <div class="form-field">
+            <label for="initial-flight-stopover-time-${index}">Ora scalo</label>
+            <input id="initial-flight-stopover-time-${index}" name="initialFlightStopoverTime" type="time" value="${escapeHtml(stopover.time || "")}">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="initial-flight-cost-${index}">Costo</label>
+          <input id="initial-flight-cost-${index}" name="initialFlightCost" type="number" min="0" step="0.01" value="${escapeHtml(draft.cost ?? "")}">
+          ${fieldError(errors, `initialFlight_${index}_cost`)}
+        </div>
+        <div class="form-field">
+          <label for="initial-flight-payment-${index}">Stato pagamento</label>
+          <select id="initial-flight-payment-${index}" name="initialFlightPaymentStatus">${renderPaymentOptions(paymentStatus)}</select>
+        </div>
+      </div>
+
+      <div class="form-field" data-paid-amount-field ${paidAmountVisible ? "" : "hidden"}>
+        <label for="initial-flight-paid-${index}">Importo pagato</label>
+        <input id="initial-flight-paid-${index}" name="initialFlightPaidAmount" type="number" min="0" step="0.01" value="${escapeHtml(getPaidAmountFieldValue(paymentStatus, draft.cost ?? "", draft.paidAmount))}">
+        ${fieldError(errors, `initialFlight_${index}_paidAmount`)}
+      </div>
+
+      <div class="form-field">
+        <label for="initial-flight-notes-${index}">Note</label>
+        <textarea id="initial-flight-notes-${index}" name="initialFlightNotes" rows="3">${escapeHtml(draft.notes || "")}</textarea>
+      </div>
+    </article>
+  `;
+}
+
+function renderInitialFlightsFormSection(trip, errors, mode) {
+  if (mode !== "create") {
+    return "";
+  }
+
+  const flights = getInitialFlightsForForm(trip, mode);
+
+  return `
+    <section class="destinations-form initial-flights-form" aria-labelledby="initial-flights-form-title">
+      <div class="destinations-form__header">
+        <div>
+          <h2 id="initial-flights-form-title">Voli iniziali</h2>
+          <p>Aggiungi subito i voli principali del viaggio. Puoi farlo anche dopo dal dossier.</p>
+        </div>
+        <button class="button button--ghost button--small" type="button" data-action="add-initial-flight">+ Aggiungi volo</button>
+      </div>
+
+      ${flights.length > 0 ? `
+        <div class="destinations-form__list">
+          ${flights.map((flight, index) => renderInitialFlightFields(flight, index, errors)).join("")}
+        </div>
+      ` : ""}
+    </section>
+  `;
+}
+
 function renderTripForm({ trip = null, errors = {}, modeOverride = null } = {}) {
   const mode = modeOverride || (trip?.id ? "edit" : "create");
   const submitLabel = mode === "edit" ? "Salva modifiche" : "Crea viaggio";
@@ -298,6 +618,8 @@ function renderTripForm({ trip = null, errors = {}, modeOverride = null } = {}) 
       </div>
 
       ${renderDestinationsFormSection(trip, errors)}
+
+      ${renderInitialFlightsFormSection(trip, errors, mode)}
 
       <div class="form-grid">
         <div class="form-field">
@@ -521,6 +843,78 @@ function updateDestinationsInOpenForm(actionTarget) {
   }, {}, draft.mode);
 }
 
+function updateInitialFlightsInOpenForm(actionTarget) {
+  const form = actionTarget.closest("form");
+
+  if (!form || form.id !== "trip-form") {
+    return;
+  }
+
+  markModalDirty();
+
+  const draft = collectTripFormDraft(form);
+  const initialFlights = Array.isArray(draft.initialFlights) ? [...draft.initialFlights] : [];
+  const index = Number(actionTarget.dataset.initialFlightIndex || -1);
+
+  if (actionTarget.dataset.action === "add-initial-flight") {
+    initialFlights.push(createBlankInitialFlight());
+  }
+
+  if (actionTarget.dataset.action === "remove-initial-flight" && index >= 0) {
+    initialFlights.splice(index, 1);
+  }
+
+  replaceOpenTripForm({
+    ...draft,
+    initialFlights
+  }, {}, draft.mode);
+}
+
+function updateInitialFlightStopoverFields(input) {
+  const card = input.closest(".initial-flight-card");
+  const fields = card?.querySelector("[data-stopover-fields]");
+
+  if (!fields) {
+    return;
+  }
+
+  fields.hidden = !input.checked;
+
+  if (!input.checked) {
+    fields.querySelectorAll("input").forEach((field) => {
+      field.value = "";
+    });
+  }
+}
+
+function updateInitialFlightPaymentField(input) {
+  const card = input.closest(".initial-flight-card");
+  const field = card?.querySelector("[data-paid-amount-field]");
+  const paidInput = field?.querySelector("input");
+  const costInput = card?.querySelector('[name="initialFlightCost"]');
+  const paymentSelect = card?.querySelector('[name="initialFlightPaymentStatus"]');
+  const paymentStatus = paymentSelect?.value || "unpaid";
+
+  if (!field || !paidInput) {
+    return;
+  }
+
+  const isPartial = paymentStatus === "partial";
+  field.hidden = !isPartial;
+
+  if (paymentStatus === "unpaid") {
+    paidInput.value = "";
+  }
+
+  if (paymentStatus === "paid") {
+    paidInput.value = costInput?.value || "";
+  }
+
+  if (input.name === "initialFlightCost" && paymentStatus === "paid") {
+    paidInput.value = input.value;
+  }
+}
+
 function handleTripFormSubmit(event) {
   if (event.target.id !== "trip-form") {
     return;
@@ -533,10 +927,10 @@ function handleTripFormSubmit(event) {
   const mode = String(formData.get("mode") || "create");
   const tripId = String(formData.get("tripId") || "");
   const currentTrip = mode === "edit" ? getTripById(tripId) : null;
-  const { errors, values } = validateTripForm(formData, currentTrip);
+  const { errors, values, initialFlightDrafts, initialFlights } = validateTripForm(formData, currentTrip);
 
   if (Object.keys(errors).length > 0) {
-    openTripForm(mode === "edit" ? { ...getTripById(tripId), ...values } : values, errors, mode);
+    openTripForm(mode === "edit" ? { ...getTripById(tripId), ...values } : { ...values, initialFlights: initialFlightDrafts }, errors, mode);
     return;
   }
 
@@ -544,7 +938,34 @@ function handleTripFormSubmit(event) {
     updateTrip(tripId, values);
     showToast("Viaggio aggiornato.");
   } else {
-    createTrip(values);
+    const trip = createTrip(values);
+    initialFlights.forEach((flight) => {
+      const cost = parseOptionalCost(flight.cost);
+      const paidAmount = parseOptionalCost(flight.paidAmount);
+      const paymentValidation = validatePaymentAllocation({
+        totalAmount: Number.isFinite(cost) ? cost : 0,
+        paymentStatus: flight.paymentStatus,
+        paidAmount: Number.isFinite(paidAmount) ? paidAmount : 0
+      });
+
+      createFlight({
+        type: "altro",
+        tripId: trip.id,
+        from: flight.from,
+        to: flight.to,
+        departureDate: flight.departureDate,
+        departureTime: flight.departureTime,
+        arrivalDate: flight.arrivalDate,
+        arrivalTime: flight.arrivalTime,
+        bookingNumber: flight.bookingNumber,
+        baggage: flight.baggage,
+        cost: Number.isFinite(cost) ? cost : 0,
+        paymentStatus: paymentValidation.paymentStatus,
+        paidAmount: paymentValidation.paidAmount,
+        stopover: flight.stopover,
+        notes: flight.notes
+      });
+    });
     showToast("Viaggio creato.");
   }
 
@@ -575,6 +996,16 @@ function handleHomeClick(event) {
     event.preventDefault();
     event.stopPropagation();
     updateDestinationsInOpenForm(actionTarget);
+    return;
+  }
+
+  if ([
+    "add-initial-flight",
+    "remove-initial-flight"
+  ].includes(action)) {
+    event.preventDefault();
+    event.stopPropagation();
+    updateInitialFlightsInOpenForm(actionTarget);
     return;
   }
 
@@ -647,6 +1078,18 @@ function handleHomeClick(event) {
 
 function handleHomeChange(event) {
   const actionTarget = event.target.closest("[data-action]");
+
+  if (event.target.name === "initialFlightStopoverEnabled") {
+    markModalDirty();
+    updateInitialFlightStopoverFields(event.target);
+    return;
+  }
+
+  if (["initialFlightCost", "initialFlightPaymentStatus"].includes(event.target.name)) {
+    markModalDirty();
+    updateInitialFlightPaymentField(event.target);
+    return;
+  }
 
   if (!actionTarget || actionTarget.dataset.action !== "import-backup-file") {
     return;
