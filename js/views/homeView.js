@@ -245,11 +245,11 @@ function renderDestinationFields(destination, index, count, errors) {
 
       <div class="form-grid">
         <div class="form-field">
-          <label for="destination-arrival-${index}">Data arrivo</label>
+          <label for="destination-arrival-${index}">Arrivo nella destinazione</label>
           <input id="destination-arrival-${index}" name="destinationArrivalDate" type="date" value="${escapeHtml(destination.arrivalDate || "")}">
         </div>
         <div class="form-field">
-          <label for="destination-departure-${index}">Data partenza</label>
+          <label for="destination-departure-${index}">Partenza dalla destinazione</label>
           <input id="destination-departure-${index}" name="destinationDepartureDate" type="date" value="${escapeHtml(destination.departureDate || "")}">
           ${fieldError(errors, `destination_${index}_dates`)}
         </div>
