@@ -483,7 +483,7 @@ export function renderTimelineView({ params }) {
 
   return `
     <section class="page timeline-page" data-timeline-trip-id="${escapeHtml(trip.id)}" aria-labelledby="timeline-title">
-      <header class="page__header home-hero">
+      <header class="page__header">
         <div>
           <p class="page__eyebrow">Timeline</p>
           <h1 class="page__title" id="timeline-title">${escapeHtml(trip.name)}</h1>

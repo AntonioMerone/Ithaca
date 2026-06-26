@@ -535,7 +535,7 @@ export function renderChecklistView({ params }) {
 
   return `
     <section class="page checklist-page" data-checklist-trip-id="${escapeHtml(trip.id)}" aria-labelledby="checklist-title">
-      <header class="page__header home-hero">
+      <header class="page__header">
         <div>
           <p class="page__eyebrow">Checklist</p>
           <h1 class="page__title" id="checklist-title">${escapeHtml(trip.name)}</h1>

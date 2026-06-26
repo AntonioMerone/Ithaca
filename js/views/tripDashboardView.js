@@ -1,5 +1,4 @@
 import { closeModal, openModal } from "../components/modal.js";
-import { renderAppBar } from "../components/appBar.js";
 import { showToast } from "../components/toast.js";
 import {
   createActivity,
@@ -1262,10 +1261,6 @@ function renderDedicatedDossierPage({ trip, title, summary, sectionHtml }) {
 
   return `
     <section class="page dossier-section-page" data-dashboard-trip-id="${escapeHtml(trip.id)}" aria-labelledby="dossier-section-title">
-      ${renderAppBar({
-        subtitle: title,
-        backHref: `#/trip/${encodedTripId}`
-      })}
       <a class="button button--ghost dossier-back-link" href="#/trip/${encodedTripId}">&larr; Dossier</a>
       <header class="page__header">
         <p class="page__eyebrow">Dossier viaggio</p>
@@ -1498,7 +1493,7 @@ function renderFlightForm({ trip, flight = null, errors = {}, modeOverride = nul
       <div class="form-field">
         <label class="checkbox-row" for="flight-stopover-enabled-input">
           <input id="flight-stopover-enabled-input" name="stopoverEnabled" type="checkbox" ${stopoverEnabled ? "checked" : ""}>
-          <span>Aggiungi scalo</span>
+          <span>Questo volo ha uno scalo</span>
         </label>
       </div>
 

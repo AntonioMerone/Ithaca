@@ -877,7 +877,7 @@ export function renderBudgetView({ params }) {
 
   return `
     <section class="page budget-page" data-budget-trip-id="${escapeHtml(trip.id)}" aria-labelledby="budget-title">
-      <header class="page__header home-hero">
+      <header class="page__header">
         <div>
           <p class="page__eyebrow">Registro spese</p>
           <h1 class="page__title" id="budget-title">${escapeHtml(trip.name)}</h1>

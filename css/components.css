@@ -2853,6 +2853,38 @@
   resize: vertical;
 }
 
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: fit-content;
+  max-width: 100%;
+  padding: var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--color-border) 84%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-surface-muted) 72%, white);
+  color: var(--color-primary-strong);
+  cursor: pointer;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.checkbox-row input {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--color-primary);
+  flex: 0 0 auto;
+}
+
+[data-stopover-fields] {
+  display: grid;
+  gap: var(--space-4);
+}
+
+[data-stopover-fields][hidden] {
+  display: none;
+}
+
 .form-errors {
   display: grid;
   gap: var(--space-1);

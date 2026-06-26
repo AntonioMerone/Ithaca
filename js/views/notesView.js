@@ -437,7 +437,7 @@ export function renderNotesView({ params }) {
 
   return `
     <section class="page notes-page" data-notes-trip-id="${escapeHtml(trip.id)}" aria-labelledby="notes-title">
-      <header class="page__header home-hero">
+      <header class="page__header">
         <div>
           <p class="page__eyebrow">Note</p>
           <h1 class="page__title" id="notes-title">${escapeHtml(trip.name)}</h1>
