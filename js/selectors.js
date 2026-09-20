@@ -119,15 +119,21 @@ export function selectDashboard(data, trip, now = new Date()) {
     next: getNextTimelineItem(timeline, now),
     todayEvents: timeline.filter(event => event.date === today),
     currentStays: records.filter(r => r.source === "stays" && r.item.checkInDate && r.item.checkOutDate && r.item.checkInDate <= today && today < r.item.checkOutDate),
+    nextStay: records.filter(r => r.source === "stays" && r.item.checkInDate >= today).sort((a, b) => a.date.localeCompare(b.date))[0] || null,
     pinned: records.filter(r => r.item.pinned),
     checklist: calculateChecklistSummary(records.filter(r => r.source === "checklistItems").map(r => r.item)),
     budget: summarizeBudget(trip, ledger),
     preferences: { ...DEFAULT_DASHBOARD, ...trip.dashboardPreferences },
-    status: determineTripStatus(trip.startDate, trip.endDate)
+    status: determineTripStatus(trip.startDate, trip.endDate, now)
   };
+}
+
+export function sortTripsForHome(trips) {
+  const rank = trip => ({ ongoing: 0, starts_today: 0, future: 1, undated: 2, past: 3 })[determineTripStatus(trip.startDate, trip.endDate)];
+  return [...trips].sort((a, b) => rank(a) - rank(b) || (rank(a) === 3 ? String(b.endDate || b.startDate).localeCompare(String(a.endDate || a.startDate)) : String(a.startDate || "9999").localeCompare(String(b.startDate || "9999"))));
 }
 
 export function recordPreview(record) {
   const item = record.item;
-  return getNotePreview([item.flightNumber, item.bookingNumber, item.location || item.address, item.content || item.notes].filter(Boolean).join(" · "), 110);
+  return getNotePreview([item.flightNumber, item.bookingNumber ? `Prenotazione ${item.bookingNumber}` : "", item.location || item.address, item.content || item.notes].filter(Boolean).join(" · "), 150);
 }

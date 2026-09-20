@@ -25,18 +25,20 @@ export function renderTripDashboardView({ params }) {
   const notes = model.records.filter(record => record.source === "notes").sort((a, b) => String(b.item.updatedAt || "").localeCompare(String(a.item.updatedAt || "")));
   const blocks = [];
   if (preferences.next && !past) {
-    if (model.next) blocks.push(block("Prossimo", rows([model.next]), `<a href="${base}/timeline" class="text-link">Timeline →</a>`, "dashboard-block--next"));
-    if (inProgress) {
-      const today = model.todayEvents.filter(event => event.id !== model.next?.id);
-      if (today.length) blocks.push(block("Oggi", rows(today), "", "dashboard-block--today"));
-      else if (!model.todayEvents.length) blocks.push('<p class="quiet-message">Nessuna attività per oggi.</p>');
+    if (inProgress && model.todayEvents.length) {
+      const today = model.todayEvents.map(event => ({ ...event, totalAmount: 0, label: event.id === model.next?.id ? `Prossimo · ${event.label}` : event.label }));
+      blocks.push(block(`Oggi · ${formatDate(model.today)}`, rows(today), `<button class="text-link" type="button" data-action="open-quick-add" data-trip-id="${escapeHtml(trip.id)}" data-date="${model.today}">+ Aggiungi</button>`, "dashboard-block--today"));
     }
+    if (model.next && (!inProgress || model.next.date !== model.today)) blocks.push(block("Prossimo", rows([{ ...model.next, totalAmount: 0 }]), `<a href="${base}/timeline" class="text-link">Timeline →</a>`, "dashboard-block--next"));
   }
-  if (preferences.stay && inProgress && model.currentStays.length) blocks.push(block("Il tuo soggiorno", rows(model.currentStays)));
+  if (preferences.stay && !past) {
+    const stays = inProgress ? model.currentStays : model.nextStay && model.nextStay.sourceId !== model.next?.sourceId ? [model.nextStay] : [];
+    if (stays.length) blocks.push(block(inProgress ? "Il tuo soggiorno" : "Dove dormirai", rows(stays)));
+  }
   if (preferences.pinned && model.pinned.length) blocks.push(block("In evidenza", rows(model.pinned)));
   if (preferences.due && due.length) blocks.push(block("Da pagare", `<p class="dashboard-total">${money(budget.unpaidTotal)}</p><p class="quiet-message">${due.length} ${due.length === 1 ? "pagamento da completare" : "pagamenti da completare"}</p>`, `<a class="text-link" href="${base}/budget/due">Vedi pagamenti →</a>`));
-  if (preferences.checklist && checklist.total && (!past || checklist.open)) blocks.push(block("Checklist", `<div class="dashboard-checklist-summary"><strong>${checklist.completed} / ${checklist.total} completati</strong><progress max="${checklist.total}" value="${checklist.completed}" aria-label="Checklist completata"></progress></div>${openChecklist.slice(0, 3).map(record => `<label class="dashboard-task"><input type="checkbox" data-action="toggle-checklist-item" data-item-id="${escapeHtml(record.sourceId)}"><span>${escapeHtml(record.title)}${record.item.dueDate ? `<small class="${isChecklistItemOverdue(record.item) ? "overdue" : ""}">${isChecklistItemOverdue(record.item) ? "Scaduto · " : ""}${formatDate(record.item.dueDate)}</small>` : ""}</span></label>`).join("")}`, `<a class="text-link" href="${base}/checklist">Apri →</a>`));
   if (preferences.budget && (budget.plannedTotal || budget.budgetTotal)) blocks.push(block(past ? "Riepilogo del viaggio" : "Budget", `<p class="dashboard-total">${money(budget.plannedTotal)}${budget.budgetTotal ? `<small> / ${money(budget.budgetTotal)}</small>` : ""}</p><p class="quiet-message">${past && duration ? `${duration} giorni · ` : ""}Pagato ${money(budget.paidTotal)}${budget.isOverBudget ? ` · Oltre il budget di ${money(-budget.remaining)}` : ""}</p>${budget.budgetTotal ? `<progress class="${budget.isOverBudget ? "is-over-budget" : ""}" max="${budget.budgetTotal}" value="${Math.min(budget.plannedTotal, budget.budgetTotal)}" aria-label="Budget utilizzato"></progress>` : ""}`, `<a class="text-link" href="${base}/budget">Dettaglio →</a>`));
+  if (preferences.checklist && checklist.total && (!past || checklist.open)) blocks.push(block("Checklist", `<div class="dashboard-checklist-summary"><strong>${checklist.completed} / ${checklist.total} completati</strong><progress max="${checklist.total}" value="${checklist.completed}" aria-label="Checklist completata"></progress></div>${openChecklist.slice(0, 3).map(record => `<label class="dashboard-task"><input type="checkbox" data-action="toggle-checklist-item" data-item-id="${escapeHtml(record.sourceId)}"><span>${escapeHtml(record.title)}${record.item.dueDate ? `<small class="${isChecklistItemOverdue(record.item) ? "overdue" : ""}">${isChecklistItemOverdue(record.item) ? "Scaduto · " : ""}${formatDate(record.item.dueDate)}</small>` : ""}</span></label>`).join("")}`, `<a class="text-link" href="${base}/checklist">Apri →</a>`));
   if (preferences.notes && (notes.length || trip.notes)) blocks.push(block("Note", `${trip.notes ? `<p class="preserve-lines">${escapeHtml(trip.notes)}</p>` : ""}${rows(notes.slice(0, 3))}`, `<a class="text-link" href="${base}/notes">Tutte →</a>`));
   return `<section class="page trip-overview" data-dashboard-trip-id="${escapeHtml(trip.id)}" aria-labelledby="trip-title">
     <div class="overview-toolbar"><a class="text-link" href="#/home">← Viaggi</a><div><button class="button button--ghost button--small" type="button" data-action="edit-trip" data-trip-id="${escapeHtml(trip.id)}">Modifica</button><button class="button button--ghost button--small" type="button" data-action="customize-dashboard" data-trip-id="${escapeHtml(trip.id)}">Personalizza</button></div></div>

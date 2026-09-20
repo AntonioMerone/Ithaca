@@ -82,7 +82,7 @@ Checklist manuale per la prima release PWA di Ithaca.
 
 - [ ] Manifest valido e raggiungibile.
 - [ ] Service worker registrato.
-- [ ] Cache aggiornata a `ithaca-shell-v21-7`.
+- [ ] Cache aggiornata a `ithaca-shell-v22-3`.
 - [ ] App caricabile offline dopo primo caricamento.
 - [ ] Icone manifest 192x192 e 512x512 presenti.
 - [ ] Favicon presente.
@@ -96,7 +96,7 @@ Checklist manuale per la prima release PWA di Ithaca.
 - [ ] URL GitHub Pages aperto da iPhone/Safari.
 - [ ] `index.html` usa path relativi per CSS, JS, manifest e icone.
 - [ ] `manifest.json` usa `start_url` e `scope` relativi.
-- [ ] Il service worker usa cache `ithaca-shell-v21-7`.
+- [ ] Il service worker usa cache `ithaca-shell-v22-3`.
 - [ ] Il service worker registra `./service-worker.js`.
 - [ ] La Home si apre da `https://USERNAME.github.io/Ithaca/#/home`.
 - [ ] Una pagina viaggio si apre da hash route senza 404 server.
@@ -127,3 +127,16 @@ Checklist manuale per la prima release PWA di Ithaca.
 - [ ] Focus visibile su bottoni, link e input.
 - [ ] Label associate agli input principali.
 - [ ] Modal chiudibile da pulsante, backdrop ed Escape.
+
+## Revisione dei processi — 20 settembre 2026
+
+- [x] Suite `npm test`: 23 test, senza framework runtime aggiunto.
+- [x] Controllo sintattico di JavaScript e importazione del grafo del router.
+- [x] Migrazione, backup e viste derivate: regressioni automatiche.
+- [x] Default contestuali, pagamenti con annullamento e history dei modal: test automatici.
+- [x] Precache e risposte offline del service worker: test in ambiente simulato.
+- [ ] Nuovo giro browser sugli scenari A–J dopo le ultime modifiche.
+- [ ] Tastiera mobile, Indietro, footer sticky a 375/390/430 px e desktop.
+- [ ] Aggiornamento PWA e riapertura con rete disattivata su dispositivo reale.
+
+La verifica browser finale è rimasta bloccata dalla verifica automatica delle autorizzazioni per limite d'uso. I risultati e i percorsi sono descritti in `UX_WORKFLOWS.md`.

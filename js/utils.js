@@ -675,11 +675,11 @@ export function getDaysUntilTrip(startDate) {
   return daysBetween(startOfToday(), start);
 }
 
-export function determineTripStatus(startDate, endDate) {
+export function determineTripStatus(startDate, endDate, referenceDate = null) {
   const start = parseDate(startDate);
   const end = parseDate(endDate);
 
-  const today = startOfToday();
+  const today = referenceDate ? new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate()) : startOfToday();
   if (end && today > end) return "past";
   if (!start) return "undated";
   const daysToStart = daysBetween(today, start);

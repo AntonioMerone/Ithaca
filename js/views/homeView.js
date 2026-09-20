@@ -1,4 +1,4 @@
-import { selectLedger, summarizeBudget } from "../selectors.js";
+import { selectLedger, summarizeBudget, sortTripsForHome } from "../selectors.js";
 import { enhanceProgressiveForm } from "../components/progressiveForm.js";
 import { closeModal, markModalDirty, openModal } from "../components/modal.js";
 import { showToast } from "../components/toast.js";
@@ -894,6 +894,7 @@ function handleTripFormSubmit(event) {
   const tripId = String(formData.get("tripId") || "");
   const currentTrip = mode === "edit" ? getTripById(tripId) : null;
   const { errors, values, initialFlightDrafts, initialFlights } = validateTripForm(formData, currentTrip);
+  let navigateTo = "";
 
   if (Object.keys(errors).length > 0) {
     openTripForm(mode === "edit" ? { ...getTripById(tripId), ...values } : { ...values, initialFlights: initialFlightDrafts }, errors, mode);
@@ -933,10 +934,10 @@ function handleTripFormSubmit(event) {
       });
     });
     showToast("Viaggio creato.");
-    window.location.hash = `#/trip/${encodeURIComponent(trip.id)}`;
+    navigateTo = `#/trip/${encodeURIComponent(trip.id)}`;
   }
 
-  closeModal();
+  closeModal({ navigateTo });
   refreshView();
 }
 
@@ -1150,7 +1151,7 @@ function renderTripList(trips, data) {
 export function renderHomeView() {
   ensureHomeHandlers();
   const data = getData();
-  const trips = data.trips;
+  const trips = sortTripsForHome(data.trips);
 
   return `
     <section class="page" aria-labelledby="home-title">

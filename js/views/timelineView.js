@@ -1,10 +1,11 @@
+import { entryDefaults } from "../entryContext.js";
 import { getData } from "../storage.js";
 import { selectTimeline } from "../selectors.js";
 import { renderRecordRow } from "../components/recordRow.js";
 import { closeModal, openModal } from "../components/modal.js";
 import { showToast } from "../components/toast.js";
 import { createTimelineItem, deleteTimelineItem, getTimelineItemById, getTripById, updateTimelineItem } from "../storage.js";
-import { TIMELINE_PAYMENT_STATUSES, TIMELINE_TYPES, escapeHtml, formatDate, formatDestinationRange, getNextTimelineItem, getTimelinePaymentStatusLabel, getTimelineTypeLabel, groupTimelineItemsByDate } from "../utils.js";
+import { TIMELINE_PAYMENT_STATUSES, TIMELINE_TYPES, escapeHtml, formatDate, formatDestinationRange, getTimelinePaymentStatusLabel, getTimelineTypeLabel, groupTimelineItemsByDate } from "../utils.js";
 
 const timelineFilters = new Map();
 let timelineHandlersReady = false;
@@ -93,7 +94,7 @@ function renderTimelineList(allItems, filteredItems, trip) {
     <section class="timeline-list" aria-label="Lista timeline">
       ${Object.entries(groups).map(([date, items]) => `
         <section class="timeline-day" aria-labelledby="timeline-day-${escapeHtml(date)}">
-          <h2 class="timeline-day__title" id="timeline-day-${escapeHtml(date)}">${date === "senza-data" ? "Senza data" : formatDate(date)}</h2>
+          <header class="timeline-day__header"><h2 class="timeline-day__title" id="timeline-day-${escapeHtml(date)}">${date === "senza-data" ? "Senza data" : formatDate(date)}</h2>${date !== "senza-data" ? `<button class="button button--small button--ghost" type="button" data-action="open-quick-add" data-trip-id="${escapeHtml(trip.id)}" data-date="${escapeHtml(date)}" aria-label="Aggiungi il ${formatDate(date)}">+ Aggiungi</button>` : ""}</header>
           <div class="timeline-day__items">
             ${items.map((item) => renderTimelineItem(item, trip.currency || "EUR")).join("")}
           </div>
@@ -283,7 +284,7 @@ function handleTimelineClick(event) {
 
   if (action === "open-timeline-form" && tripId) {
     const trip = getTripById(tripId);
-    if (trip) openTimelineForm(trip);
+    if (trip) openTimelineForm(trip, entryDefaults("timeline", trip, actionTarget.dataset.date));
   }
 
   if (action === "edit-timeline-item") {

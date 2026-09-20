@@ -1,4 +1,4 @@
-const CACHE_NAME = "ithaca-shell-v22-2";
+const CACHE_NAME = "ithaca-shell-v22-3";
 
 const APP_SHELL = [
   "./",
@@ -19,6 +19,8 @@ const APP_SHELL = [
   "./css/layout.css",
   "./css/workspace.css",
   "./js/selectors.js",
+  "./js/entryContext.js",
+  "./js/components/modalHistory.js",
   "./js/views/dossierForms.js",
   "./js/views/archiveView.js",
   "./js/components/recordRow.js",

@@ -4,14 +4,34 @@ import { escapeHtml, formatDestinationRange, formatCurrency } from "../utils.js"
 import { renderRecordRow } from "../components/recordRow.js";
 
 const filters = new Map();
+let focusSearch = false;
 const createActions = { flights: "flight", stays: "stay", activities: "activity", expenses: "expense", notes: "note", checklistItems: "checklist", timelineItems: "timeline" };
+const emptyCopy = {
+  all: ["Ancora nessun elemento", "Aggiungi qualcosa"],
+  flights: ["Nessun volo salvato", "Aggiungi il primo volo"],
+  stays: ["Nessun soggiorno", "Aggiungi dove dormirai"],
+  activities: ["Nessuna attività", "Aggiungi la prima attività"],
+  expenses: ["Nessuna spesa", "Aggiungi una spesa"],
+  notes: ["Nessuna nota", "Salva un appunto"],
+  checklistItems: ["Nessuna cosa da fare", "Aggiungi alla checklist"],
+  timelineItems: ["Nessun evento manuale", "Aggiungi un evento"]
+};
+
+export function startArchiveSearch(tripId) {
+  filters.set(tripId, { query: filters.get(tripId)?.query || "", category: "all" });
+  focusSearch = true;
+  const hash = `#/trip/${encodeURIComponent(tripId)}/archive`;
+  if (location.hash === hash) window.dispatchEvent(new CustomEvent("ithaca:refresh"));
+  else location.hash = hash;
+}
 
 function renderResults(trip, records, filter) {
   const selected = filter.category === "all" ? records : records.filter(record => record.source === filter.category);
   const results = searchRecords(selected, filter.query);
   const create = filter.category === "all" ? "open-quick-add" : `open-${createActions[filter.category]}-form`;
+  const [emptyTitle, emptyAction] = emptyCopy[filter.category] || emptyCopy.all;
   return `${filter.query ? `<p class="search-count" role="status">${results.length} risultati</p>` : ""}
-    ${results.length ? `<div class="record-list">${results.map(record => renderRecordRow(record, trip.currency, { deletable: true })).join("")}</div>` : `<div class="empty-state"><h2>${filter.query ? "Nessun risultato" : "Nessuna informazione salvata"}</h2><p>${filter.query ? "Prova un altro nome, luogo o numero di prenotazione." : "Bastano poche parole. Puoi aggiungere i dettagli in seguito."}</p>${filter.query ? "" : `<button class="button button--primary" type="button" data-action="${create}" data-trip-id="${escapeHtml(trip.id)}">${filter.category === "all" ? "+ Aggiungi" : `+ ${RECORD_TYPES[filter.category].label}`}</button>`}</div>`}`;
+    ${results.length ? `<div class="record-list">${results.map(record => renderRecordRow(record, trip.currency, { deletable: true })).join("")}</div>` : `<div class="empty-state"><h2>${filter.query ? "Nessun risultato" : emptyTitle}</h2><p>${filter.query ? "Prova un altro nome, luogo o numero di prenotazione." : "Puoi completare i dettagli quando vuoi."}</p>${filter.query ? "" : `<button class="button button--primary" type="button" data-action="${create}" data-trip-id="${escapeHtml(trip.id)}">+ ${emptyAction}</button>`}</div>`}`;
 }
 
 function legacyDetails(trip) {
@@ -58,6 +78,10 @@ export function renderArchiveView({ params, category }) {
   if (category) filter.category = category;
   filters.set(trip.id, filter);
   const records = selectRecords(data, trip.id);
+  if (focusSearch) {
+    focusSearch = false;
+    requestAnimationFrame(() => document.querySelector("#archive-search")?.focus());
+  }
   return `<section class="page archive-page" data-archive-trip-id="${escapeHtml(trip.id)}" aria-labelledby="archive-title">
     <header class="page__header"><p class="page__eyebrow">${escapeHtml(trip.name)}</p><h1 class="page__title" id="archive-title">Archivio</h1><p class="page__summary">Tutto quello che hai salvato per questo viaggio.</p></header>
     <label class="trip-search" for="archive-search"><span>Cerca nel viaggio</span><input id="archive-search" type="search" placeholder="Nome, luogo, prenotazione…" value="${escapeHtml(filter.query)}" autocomplete="off"></label>

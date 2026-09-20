@@ -1,20 +1,19 @@
 import { openModal, closeModal } from "./modal.js";
 import { showToast } from "./toast.js";
-import { getData, getTripById, updateTrip, toggleRecordPinned } from "../storage.js";
-import { DASHBOARD_BLOCKS, DEFAULT_DASHBOARD, selectRecords, searchRecords } from "../selectors.js";
-import { escapeHtml } from "../utils.js";
-import { renderRecordRow } from "./recordRow.js";
-
-const ADD_OPTIONS = [["flight", "Volo", "Tratta, orari, prenotazione"], ["stay", "Soggiorno", "Hotel, appartamento, ospitalità"], ["activity", "Attività", "Visita, ristorante, trasporto"], ["expense", "Spesa", "Un costo indipendente"], ["note", "Nota", "Un appunto da ritrovare"], ["checklist", "Checklist", "Una cosa da fare"], ["timeline", "Altro evento", "Un momento da ricordare"]];
-let searchContext = null;
-
+import { getTripById, updateTrip, toggleRecordPinned, updateRecordPayment } from "../storage.js";
+import { DASHBOARD_BLOCKS, DEFAULT_DASHBOARD } from "../selectors.js";
+import { escapeHtml, formatDate } from "../utils.js";
+import { quickAddOptions } from "../entryContext.js";
+import { startArchiveSearch } from "../views/archiveView.js";
 export function initTripActions() {
   document.addEventListener("click", event => {
     const button = event.target.closest("[data-action]");
     if (!button) return;
     const { action, tripId } = button.dataset;
     if (action === "open-quick-add") {
-      openModal({ title: "Cosa vuoi salvare?", content: `<div class="quick-add-menu">${ADD_OPTIONS.map(([type, title, hint]) => `<button class="quick-add-option" type="button" data-action="open-${type}-form" data-trip-id="${escapeHtml(tripId)}"><strong>${title}</strong><span>${hint}</span><span aria-hidden="true">+</span></button>`).join("")}</div>` });
+      const date = formatDate(button.dataset.date) ? button.dataset.date : "";
+      const context = location.hash.includes("/budget") ? "budget" : location.hash.endsWith("/timeline") ? "timeline" : document.querySelector('.archive-filters [aria-pressed="true"]')?.dataset.category || location.hash.split("/").at(-1);
+      openModal({ title: date ? `Aggiungi · ${formatDate(date)}` : "Cosa vuoi salvare?", content: `<div class="quick-add-menu">${quickAddOptions(context).map(([type, title, hint]) => `<button class="quick-add-option" type="button" data-action="open-${type}-form" data-trip-id="${escapeHtml(tripId)}" data-date="${date}"><strong>${title}</strong><span>${hint}</span><span aria-hidden="true">+</span></button>`).join("")}</div>` });
     }
     if (action === "toggle-pin") {
       const record = toggleRecordPinned(button.dataset.source, button.dataset.recordId);
@@ -31,19 +30,18 @@ export function initTripActions() {
       const prefs = { ...DEFAULT_DASHBOARD, ...trip.dashboardPreferences };
       openModal({ title: "La tua dashboard", confirmOnDirty: true, content: `<form id="dashboard-preferences-form" class="trip-form"><input type="hidden" name="tripId" value="${escapeHtml(trip.id)}"><p>Mostra le informazioni che vuoi avere davanti. I blocchi vuoti rimangono nascosti.</p>${Object.entries(DASHBOARD_BLOCKS).map(([key, label]) => `<label class="preference-row"><input type="checkbox" name="${key}" ${prefs[key] ? "checked" : ""}><span>${label}</span></label>`).join("")}<div class="form-actions"><button class="button button--primary" type="submit">Salva preferenze</button></div></form>` });
     }
-    if (action === "open-trip-search") {
-      const data = getData(), trip = data.trips.find(item => item.id === tripId);
-      if (!trip) return;
-      searchContext = { trip, records: selectRecords(data, tripId) };
-      openModal({ title: "Cerca nel viaggio", content: '<label class="trip-search" for="global-trip-search"><span>Nome, luogo o prenotazione</span><input id="global-trip-search" type="search" autocomplete="off" placeholder="Gracery, AZ123, Booking…"></label><div id="global-search-results"><p class="quiet-message">Cerca tra voli, soggiorni, attività, spese, note e checklist.</p></div>' });
-      document.querySelector("#global-trip-search").focus();
+    if (action === "mark-record-paid") {
+      const previous = updateRecordPayment(button.dataset.source, button.dataset.recordId, "paid");
+      if (!previous) return;
+      window.dispatchEvent(new CustomEvent("ithaca:refresh"));
+      document.querySelector('.budget-page [data-filter-value="due"]')?.focus({ preventScroll: true });
+      showToast("Pagamento registrato.", 7000, { label: "Annulla", run: () => {
+        updateRecordPayment(previous.source, previous.id, previous.status, previous.paidAmount);
+        window.dispatchEvent(new CustomEvent("ithaca:refresh"));
+        showToast("Pagamento ripristinato.");
+      }});
     }
-  });
-  document.addEventListener("input", event => {
-    if (event.target.id !== "global-trip-search" || !searchContext) return;
-    const query = event.target.value.trim();
-    const results = query ? searchRecords(searchContext.records, query) : [];
-    document.querySelector("#global-search-results").innerHTML = `<p class="search-count" role="status">${query ? `${results.length} risultati` : "Scrivi per cercare"}</p>${results.map(record => renderRecordRow(record, searchContext.trip.currency, { showPin: false })).join("")}`;
+    if (action === "open-trip-search") startArchiveSearch(tripId);
   });
   document.addEventListener("submit", event => {
     if (event.target.id !== "dashboard-preferences-form") return;

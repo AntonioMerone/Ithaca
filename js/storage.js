@@ -471,6 +471,21 @@ export function toggleRecordPinned(source, id) {
   return record;
 }
 
+export function updateRecordPayment(source, id, status, paidAmount) {
+  if (!["flights", "stays", "activities", "expenses", "timelineItems"].includes(source)) return null;
+  const data = getData();
+  const record = data[source].find(item => item.id === id);
+  if (!record) return null;
+  const statusField = source === "expenses" ? "status" : "paymentStatus";
+  const total = normalizeMoney(source === "expenses" ? record.amount : record.cost);
+  const previous = { source, id, status: record[statusField], paidAmount: record.paidAmount || 0 };
+  record[statusField] = source === "timelineItems" && status === "none" ? "none" : normalizePaymentStatus(status);
+  record.paidAmount = status === "paid" ? total : normalizePaidAmount(paidAmount, total);
+  record.updatedAt = new Date().toISOString();
+  saveData(data);
+  return previous;
+}
+
 export function getFlights() {
   return getData().flights;
 }

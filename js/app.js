@@ -43,4 +43,7 @@ try {
 window.addEventListener("storage", event => {
   if (event.key === "ithaca:data" && !document.querySelector("#modal-root form")) window.dispatchEvent(new CustomEvent("ithaca:refresh"));
 });
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && !document.querySelector("#modal-root .modal")) window.dispatchEvent(new CustomEvent("ithaca:refresh"));
+});
 registerServiceWorker();

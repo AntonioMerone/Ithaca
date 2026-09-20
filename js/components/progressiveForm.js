@@ -1,8 +1,10 @@
+import { getTripById } from "../storage.js";
+
 // Keep the existing form fields, validation and values; move optional fields
 // into a native disclosure. Closed fields remain part of FormData.
 const ESSENTIAL_FIELDS = {
   "trip-form": ["name", "startDate", "endDate"],
-  "flight-form": ["from", "to", "departureDate", "departureTime", "cost"],
+  "flight-form": ["from", "to", "departureDate", "departureTime"],
   "stay-form": ["structureName", "checkInDate", "checkOutDate", "cost"],
   "activity-form": ["name", "date", "time", "cost"],
   "expense-form": ["name", "amount", "status"],
@@ -41,4 +43,30 @@ export function enhanceProgressiveForm(root) {
   const actions = form.querySelector(".form-actions");
   form.insertBefore(primary, actions);
   form.insertBefore(details, actions);
+  const currency = getTripById(form.elements.tripId?.value)?.currency || "EUR";
+  for (const moneyInput of form.querySelectorAll('[name="cost"], [name="amount"], [name="paidAmount"]')) {
+    const label = form.querySelector(`label[for="${moneyInput.id}"]`);
+    if (label) label.textContent += ` (${currency})`;
+  }
+  if (form.elements.mode?.value === "edit") {
+    const booking = form.querySelector('[name="bookingNumber"]')?.value;
+    const flight = form.querySelector('[name="flightNumber"]')?.value;
+    if (booking || flight) {
+      const reference = document.createElement("p");
+      reference.className = "form-reference";
+      reference.textContent = [flight ? `Volo ${flight}` : "", booking ? `Prenotazione ${booking}` : ""].filter(Boolean).join(" · ");
+      form.insertBefore(reference, primary);
+    }
+  } else if (["activity-form", "checklist-form"].includes(form.id)) {
+    const repeat = actions.querySelector('[data-action="close-modal"]');
+    repeat.removeAttribute("data-action");
+    repeat.type = "submit";
+    repeat.name = "saveAndAdd";
+    repeat.value = "true";
+    repeat.textContent = "Salva e aggiungi";
+    const save = actions.querySelector(".button--primary");
+    save.textContent = "Salva";
+    // Enter keeps its usual meaning: save and close, not repeat.
+    actions.prepend(save);
+  }
 }

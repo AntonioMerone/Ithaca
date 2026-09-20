@@ -51,6 +51,13 @@ progress.is-over-budget::-webkit-progress-value { background: var(--color-danger
 .record-row__detail { font-size: .85rem; color: var(--color-text-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .record-row__cost { font-size: .85rem; font-weight: 600; margin-top: .15rem; }
 .record-row__actions { display: flex; flex-direction: column; align-items: center; }
+.record-menu { position: relative; }
+.record-menu summary { display: grid; place-items: center; width: 44px; padding: 0; list-style: none; font-size: 1.6rem; }
+.record-menu summary::-webkit-details-marker { display: none; }
+.record-menu > button { position: absolute; right: 0; z-index: 4; min-width: 7rem; border: 1px solid var(--color-border); background: var(--color-bg-elevated); box-shadow: var(--shadow-md); }
+.record-pay { min-height: 44px; max-width: 6rem; padding: .4rem; font-size: .75rem; font-weight: 650; text-decoration: underline; text-underline-offset: 3px; }
+.form-reference { padding: .75rem; background: var(--color-green-100); border-radius: var(--radius-sm); font-weight: 600; overflow-wrap: anywhere; user-select: text; }
+.timeline-day__header { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
 .record-row__actions .button { padding: .3rem .5rem; font-size: .75rem; }
 .pin-button { width: 44px; height: 44px; font-size: 1.6rem; border-radius: var(--radius-sm); color: var(--color-text-secondary); }
 .pin-button[aria-pressed="true"] { color: #88601c; }
@@ -89,6 +96,8 @@ summary { min-height: 44px; padding: .6rem 0; cursor: pointer; font-weight: 600;
 .fab { display: grid; right: max(1.25rem, calc((100vw - 64rem) / 2)); }
 .app-main.has-bottom-nav .fab { bottom: calc(6rem + env(safe-area-inset-bottom)); }
 .toast-root { bottom: calc(10rem + env(safe-area-inset-bottom)); pointer-events: none; }
+.toast { display: flex; align-items: center; gap: .75rem; }
+.toast button { pointer-events: auto; min-height: 44px; color: inherit; text-decoration: underline; font-weight: 650; }
 .modal-open { overflow: hidden; }
 .modal { padding: 0; background: var(--color-bg-elevated); max-height: min(48rem, calc(100dvh - 2rem)); border: 0; }
 .modal__header { position: sticky; top: 0; z-index: 3; margin: 0; padding: 1rem 1.25rem; background: var(--color-bg-elevated); border-bottom: 1px solid var(--color-border); }

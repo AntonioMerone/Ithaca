@@ -1,4 +1,5 @@
-import { closeModal, openModal } from "../components/modal.js";
+import { entryDefaults, nextEntryDefaults } from "../entryContext.js";
+import { closeModal, openModal, markModalSaved } from "../components/modal.js";
 import { showToast } from "../components/toast.js";
 import { createChecklistItem, deleteChecklistItem, getChecklistItemById, getChecklistItemsByTripId, getTripById, toggleChecklistItem, updateChecklistItem } from "../storage.js";
 import { CHECKLIST_SECTIONS, calculateChecklistSummary, escapeHtml, formatDate, getChecklistSectionLabel, groupChecklistItemsBySection, isChecklistItemOverdue, sortChecklistItems } from "../utils.js";
@@ -382,7 +383,7 @@ function handleChecklistClick(event) {
   const itemId = actionTarget.dataset.itemId;
 
   if (action === "open-checklist-form" && tripId) {
-    openChecklistForm(tripId);
+    openChecklistForm(tripId, entryDefaults("checklist", getTripById(tripId), actionTarget.dataset.date));
   }
 
   if (action === "edit-checklist-item") {
@@ -487,7 +488,13 @@ function handleChecklistSubmit(event) {
     showToast("Task aggiunto.");
   }
 
-  closeModal();
+  if (mode === "create" && event.submitter?.name === "saveAndAdd") {
+    markModalSaved();
+    openChecklistForm(tripId, nextEntryDefaults("checklist", values));
+    document.querySelector("#checklist-title-input")?.focus();
+  } else {
+    closeModal();
+  }
   refreshView();
 }
 

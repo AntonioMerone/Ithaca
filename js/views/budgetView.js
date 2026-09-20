@@ -1,3 +1,4 @@
+import { entryDefaults } from "../entryContext.js";
 import { selectLedger, summarizeBudget } from "../selectors.js";
 import { renderRecordRow } from "../components/recordRow.js";
 import { getData } from "../storage.js";
@@ -5,7 +6,7 @@ import { closeModal, openModal } from "../components/modal.js";
 import { showToast } from "../components/toast.js";
 import { createExpense, deleteExpense, getExpenseById, getTripById, updateExpense } from "../storage.js";
 import { ensureDashboardHandlers } from "./dossierForms.js";
-import { EXPENSE_STATUSES, escapeHtml, formatCurrency, getDossierPaymentStatusBadge, getExpenseStatusLabel, validatePaymentAllocation } from "../utils.js";
+import { EXPENSE_STATUSES, escapeHtml, formatCurrency, getExpenseStatusLabel, validatePaymentAllocation } from "../utils.js";
 
 const budgetFilters = new Map();
 let budgetHandlersReady = false;
@@ -142,7 +143,7 @@ function renderNoFilterResults() {
 function renderLedgerList(allItems, filteredItems, currency) {
   if (!allItems.length) return renderEmptyState();
   if (!filteredItems.length) return renderNoFilterResults();
-  return `<div class="record-list">${filteredItems.map(item => renderRecordRow(item, currency, { deletable: item.source === "expenses", detail: `${item.categoryLabel} · Pagato ${formatCurrency(item.paidAmount, currency)} · Da pagare ${formatCurrency(item.dueAmount, currency)}` })).join("")}</div>`;
+  return `<div class="record-list">${filteredItems.map(item => renderRecordRow(item, currency, { quickPayment: true, deletable: item.source === "expenses", detail: `${item.categoryLabel} · Pagato ${formatCurrency(item.paidAmount, currency)} · Da pagare ${formatCurrency(item.dueAmount, currency)}` })).join("")}</div>`;
 }
 
 function renderErrorList(errors) {
@@ -398,7 +399,7 @@ function handleBudgetClick(event) {
   const expenseId = actionTarget.dataset.expenseId;
 
   if (action === "open-expense-form" && tripId) {
-    openExpenseForm(tripId);
+    openExpenseForm(tripId, entryDefaults("expense", getTripById(tripId), actionTarget.dataset.date));
   }
 
   if (action === "edit-expense") {

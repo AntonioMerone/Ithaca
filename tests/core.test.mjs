@@ -68,6 +68,7 @@ test("G–I: checklist, pins and personalization survive rereading storage", () 
   assert.equal(model.checklist.completed, 1);
   assert.equal(model.pinned[0].sourceId, stay.id);
   assert.equal(model.currentStays[0].sourceId, stay.id);
+  assert.equal(model.status, "ongoing");
   assert.equal(model.preferences.budget, false);
   assert.equal(model.preferences.next, true);
 });
@@ -166,4 +167,27 @@ test("offline shell covers all production modules and deletes only Ithaca caches
   vm.runInNewContext(script, { self: { addEventListener: (type, fn) => events[type] = fn, clients: { claim: async () => {} } }, caches: { keys: async () => ["ithaca-shell-old", "another-app"], delete: async key => deleted.push(key) } });
   await new Promise((resolve, reject) => events.activate({ waitUntil: promise => promise.then(resolve, reject) }));
   assert.deepEqual(deleted, ["ithaca-shell-old"]);
+});
+
+test("offline fetch serves cached modules and navigation fallback under a subdirectory", async () => {
+  const events = {};
+  const scope = "https://example.test/Ithaca/";
+  const script = readFileSync(new URL("../service-worker.js", import.meta.url), "utf8");
+  let networkRequests = 0;
+  const cached = new Map([[`${scope}js/app.js`, { body: "app" }], [`${scope}index.html`, { body: "shell" }]]);
+  vm.runInNewContext(script, {
+    URL,
+    self: { addEventListener: (name, handler) => events[name] = handler, location: { origin: "https://example.test" }, registration: { scope } },
+    caches: { open: async () => ({ match: async request => cached.get(typeof request === "string" ? request : request.url || request.href) }) },
+    fetch: async () => { networkRequests++; throw new Error("offline"); }
+  });
+  async function request(url, mode) {
+    let response;
+    events.fetch({ request: { url, mode, method: "GET" }, respondWith: promise => { response = promise; } });
+    return response;
+  }
+  assert.equal((await request(`${scope}js/app.js`, "cors")).body, "app");
+  assert.equal((await request(`${scope}?reopen=1`, "navigate")).body, "shell");
+  assert.equal(await request("https://elsewhere.test/asset", "cors"), undefined);
+  assert.equal(networkRequests, 0);
 });

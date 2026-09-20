@@ -1,4 +1,5 @@
-import { closeModal, openModal } from "../components/modal.js";
+import { closeModal, openModal, markModalSaved } from "../components/modal.js";
+import { entryDefaults, nextEntryDefaults } from "../entryContext.js";
 import { showToast } from "../components/toast.js";
 import { createActivity, createFlight, createStay, deleteActivity, deleteFlight, deleteStay, getActivityById, getFlightById, getStayById, getTripById, updateActivity, updateFlight, updateStay } from "../storage.js";
 import { openTripForm } from "./homeView.js";
@@ -24,7 +25,7 @@ function handleDashboardClick(event) {
 
   if (action === "open-flight-form" && tripId) {
     const trip = getTripById(tripId);
-    if (trip) openFlightForm(trip);
+    if (trip) openFlightForm(trip, entryDefaults("flight", trip, actionTarget.dataset.date));
   }
 
   if (action === "edit-flight") {
@@ -47,7 +48,7 @@ function handleDashboardClick(event) {
 
   if (action === "open-stay-form" && tripId) {
     const trip = getTripById(tripId);
-    if (trip) openStayForm(trip);
+    if (trip) openStayForm(trip, entryDefaults("stay", trip, actionTarget.dataset.date));
   }
 
   if (action === "edit-stay") {
@@ -70,7 +71,7 @@ function handleDashboardClick(event) {
 
   if (action === "open-activity-form" && tripId) {
     const trip = getTripById(tripId);
-    if (trip) openActivityForm(trip);
+    if (trip) openActivityForm(trip, entryDefaults("activity", trip, actionTarget.dataset.date));
   }
 
   if (action === "edit-activity") {
@@ -884,7 +885,13 @@ function handleActivityFormSubmit(event) {
     showToast("Attivita aggiunta.");
   }
 
-  closeModal();
+  if (mode === "create" && event.submitter?.name === "saveAndAdd") {
+    markModalSaved();
+    openActivityForm(trip, nextEntryDefaults("activity", values));
+    document.querySelector("#activity-name-input")?.focus();
+  } else {
+    closeModal();
+  }
   refreshView();
 }
 

@@ -1,6 +1,8 @@
 import { enhanceProgressiveForm } from "./progressiveForm.js";
+import { createModalHistory } from "./modalHistory.js";
 
 let returnFocus = null;
+let modalHistory = null;
 
 const UNSAVED_CONFIRM_TITLE = "Hai modifiche non salvate.";
 const UNSAVED_CONFIRM_BODY = "Se esci ora, perderai i dati inseriti.";
@@ -75,6 +77,7 @@ function showUnsavedConfirmation() {
 
 function requestModalClose() {
   if (isFormDirty()) {
+    modalHistory?.open();
     showUnsavedConfirmation();
     return;
   }
@@ -159,7 +162,14 @@ export function markModalDirty() {
   }
 }
 
+export function markModalSaved() {
+  modalState.dirty = false;
+  modalState.initialSnapshot = getFormSnapshot(getProtectedForm());
+}
+
 export function openModal({ title = "Dettaglio", content = "", confirmOnDirty = false } = {}) {
+  modalHistory ||= createModalHistory(window, requestModalClose);
+  modalHistory.open();
   const root = document.querySelector("#modal-root");
   if (!root.children.length) returnFocus = document.activeElement;
   const wasDirty = modalState.dirty || isFormDirty();
@@ -200,7 +210,7 @@ export function openModal({ title = "Dettaglio", content = "", confirmOnDirty = 
   document.addEventListener("keydown", handleModalKeydown);
 }
 
-export function closeModal({ force = false } = {}) {
+export function closeModal({ force = false, navigateTo = "" } = {}) {
   if (!force && !modalState.allowClose && isFormDirty()) {
     showUnsavedConfirmation();
     return;
@@ -217,5 +227,6 @@ export function closeModal({ force = false } = {}) {
   if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
   document.removeEventListener("keydown", handleModalKeydown);
   resetModalState();
+  modalHistory?.close(navigateTo ? () => { window.location.hash = navigateTo; } : undefined);
 }
 
