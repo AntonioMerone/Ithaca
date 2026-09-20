@@ -1,24 +1,7 @@
 import { closeModal, openModal } from "../components/modal.js";
 import { showToast } from "../components/toast.js";
-import {
-  createChecklistItem,
-  deleteChecklistItem,
-  getChecklistItemById,
-  getChecklistItemsByTripId,
-  getTripById,
-  toggleChecklistItem,
-  updateChecklistItem
-} from "../storage.js";
-import {
-  CHECKLIST_SECTIONS,
-  calculateChecklistSummary,
-  escapeHtml,
-  formatDate,
-  getChecklistSectionLabel,
-  groupChecklistItemsBySection,
-  isChecklistItemOverdue,
-  sortChecklistItems
-} from "../utils.js";
+import { createChecklistItem, deleteChecklistItem, getChecklistItemById, getChecklistItemsByTripId, getTripById, toggleChecklistItem, updateChecklistItem } from "../storage.js";
+import { CHECKLIST_SECTIONS, calculateChecklistSummary, escapeHtml, formatDate, getChecklistSectionLabel, groupChecklistItemsBySection, isChecklistItemOverdue, sortChecklistItems } from "../utils.js";
 
 const checklistFilters = new Map();
 let checklistHandlersReady = false;
@@ -508,7 +491,7 @@ function handleChecklistSubmit(event) {
   refreshView();
 }
 
-function ensureChecklistHandlers() {
+export function ensureChecklistHandlers() {
   if (checklistHandlersReady) {
     return;
   }
@@ -537,11 +520,11 @@ export function renderChecklistView({ params }) {
     <section class="page checklist-page" data-checklist-trip-id="${escapeHtml(trip.id)}" aria-labelledby="checklist-title">
       <header class="page__header">
         <div>
-          <p class="page__eyebrow">Checklist</p>
-          <h1 class="page__title" id="checklist-title">${escapeHtml(trip.name)}</h1>
+          <p class="page__eyebrow">${escapeHtml(trip.name)}</p>
+          <h1 class="page__title" id="checklist-title">Checklist</h1>
           <p class="page__summary">Preparazione, controlli durante il viaggio e chiusura al rientro.</p>
         </div>
-        <a class="button button--ghost dossier-back-link" href="#/trip/${encodedTripId}">&larr; Dossier</a>
+        <a class="button button--ghost dossier-back-link" href="#/trip/${encodedTripId}">&larr; Viaggio</a>
       </header>
 
       ${renderSummary(items)}

@@ -1,3 +1,7 @@
+import { enhanceProgressiveForm } from "./progressiveForm.js";
+
+let returnFocus = null;
+
 const UNSAVED_CONFIRM_TITLE = "Hai modifiche non salvate.";
 const UNSAVED_CONFIRM_BODY = "Se esci ora, perderai i dati inseriti.";
 
@@ -80,7 +84,16 @@ function requestModalClose() {
 
 function handleModalKeydown(event) {
   if (event.key === "Escape") {
+    event.preventDefault();
+    if (document.querySelector(".unsaved-confirm")) { hideUnsavedConfirmation(); getProtectedForm()?.querySelector("input:not([type='hidden'])")?.focus(); return; }
     requestModalClose();
+  }
+  if (event.key === "Tab") {
+    const scope = document.querySelector(".unsaved-confirm") || document.querySelector("#modal-root .modal");
+    const focusable = [...scope.querySelectorAll('button, a[href], input, select, textarea, summary, [tabindex="0"]')].filter(el => !el.disabled && el.getClientRects().length);
+    const first = focusable[0], last = focusable.at(-1);
+    if (event.shiftKey && (document.activeElement === first || !scope.contains(document.activeElement))) { event.preventDefault(); last?.focus(); }
+    else if (!event.shiftKey && (document.activeElement === last || !scope.contains(document.activeElement))) { event.preventDefault(); first?.focus(); }
   }
 }
 
@@ -106,7 +119,7 @@ function handleModalClick(event) {
     event.preventDefault();
     event.stopPropagation();
     hideUnsavedConfirmation();
-    getProtectedForm()?.querySelector("input, select, textarea, button")?.focus();
+    getProtectedForm()?.querySelector("input:not([type='hidden']), select, textarea, button")?.focus();
     return;
   }
 
@@ -148,6 +161,7 @@ export function markModalDirty() {
 
 export function openModal({ title = "Dettaglio", content = "", confirmOnDirty = false } = {}) {
   const root = document.querySelector("#modal-root");
+  if (!root.children.length) returnFocus = document.activeElement;
   const wasDirty = modalState.dirty || isFormDirty();
 
   document.removeEventListener("keydown", handleModalKeydown);
@@ -173,9 +187,12 @@ export function openModal({ title = "Dettaglio", content = "", confirmOnDirty = 
     initialSnapshot: "",
     allowClose: false
   };
+  enhanceProgressiveForm(root);
   modalState.initialSnapshot = getFormSnapshot(getProtectedForm());
 
-  root.querySelector(".modal__close").focus();
+  document.body.classList.add("modal-open");
+  document.querySelector(".app-shell").inert = true;
+  (root.querySelector(".form-errors") || root.querySelector(".modal__close")).focus();
   root.addEventListener("input", handleModalInput);
   root.addEventListener("change", handleModalInput);
   root.addEventListener("click", handleModalClick, true);
@@ -195,6 +212,10 @@ export function closeModal({ force = false } = {}) {
   root.removeEventListener("click", handleModalClick, true);
   root.removeEventListener("submit", handleModalSubmit, true);
   root.innerHTML = "";
+  document.body.classList.remove("modal-open");
+  document.querySelector(".app-shell").inert = false;
+  if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
   document.removeEventListener("keydown", handleModalKeydown);
   resetModalState();
 }
+

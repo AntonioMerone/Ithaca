@@ -1,35 +1,9 @@
+import { selectLedger, summarizeBudget } from "../selectors.js";
+import { enhanceProgressiveForm } from "../components/progressiveForm.js";
 import { closeModal, markModalDirty, openModal } from "../components/modal.js";
 import { showToast } from "../components/toast.js";
-import {
-  createBackupPayload,
-  createFlight,
-  createTrip,
-  deleteTrip,
-  getBackupFileName,
-  getActivitiesByTripId,
-  getExpensesByTripId,
-  getFlightsByTripId,
-  getStaysByTripId,
-  getTripById,
-  getTrips,
-  importBackupPayload,
-  resetAppData,
-  updateTrip
-} from "../storage.js";
-import {
-  calculateDossierBudgetSummary,
-  calculateCountdown,
-  calculateTripDuration,
-  DOSSIER_PAYMENT_STATUSES,
-  escapeHtml,
-  formatCurrency,
-  formatDate,
-  formatDestinationRange,
-  generateId,
-  getDossierPaymentStatusLabel,
-  normalizeDestinations,
-  validatePaymentAllocation
-} from "../utils.js";
+import { createBackupPayload, getData, createFlight, createTrip, deleteTrip, getBackupFileName, getTripById, importBackupPayload, resetAppData, updateTrip } from "../storage.js";
+import { calculateCountdown, calculateTripDuration, DOSSIER_PAYMENT_STATUSES, escapeHtml, formatCurrency, formatDestinationRange, generateId, getDossierPaymentStatusLabel, normalizeDestinations, validatePaymentAllocation } from "../utils.js";
 
 const DEFAULT_CURRENCY = "EUR";
 const SUPPORTED_CURRENCIES = [
@@ -275,27 +249,17 @@ function validateTripForm(formData, trip = null) {
   const budgetValue = String(formData.get("budgetTotal") || "").trim();
   const currency = String(formData.get("currency") || "").trim().toUpperCase();
   const notes = String(formData.get("notes") || "").trim();
-  const budgetTotal = budgetValue === "" ? "" : Number(budgetValue);
+  const budgetTotal = budgetValue === "" ? 0 : Number(budgetValue);
 
   if (!name) {
     errors.name = "Nome viaggio obbligatorio.";
-  }
-
-  if (!startDate) {
-    errors.startDate = "Data inizio obbligatoria.";
-  }
-
-  if (!endDate) {
-    errors.endDate = "Data fine obbligatoria.";
   }
 
   if (startDate && endDate && endDate < startDate) {
     errors.endDate = "La data fine non puo essere precedente alla data inizio.";
   }
 
-  if (budgetValue === "") {
-    errors.budgetTotal = "Budget totale obbligatorio.";
-  } else if (!Number.isFinite(budgetTotal) || budgetTotal < 0) {
+  if (!Number.isFinite(budgetTotal) || budgetTotal < 0) {
     errors.budgetTotal = "Budget totale deve essere un numero maggiore o uguale a 0.";
   }
 
@@ -624,13 +588,13 @@ function renderTripForm({ trip = null, errors = {}, modeOverride = null } = {}) 
       <div class="form-grid">
         <div class="form-field">
           <label for="trip-start">Data inizio</label>
-          <input id="trip-start" name="startDate" type="date" value="${escapeHtml(trip?.startDate || "")}" required>
+          <input id="trip-start" name="startDate" type="date" value="${escapeHtml(trip?.startDate || "")}">
           ${fieldError(errors, "startDate")}
         </div>
 
         <div class="form-field">
           <label for="trip-end">Data fine</label>
-          <input id="trip-end" name="endDate" type="date" value="${escapeHtml(trip?.endDate || "")}" required>
+          <input id="trip-end" name="endDate" type="date" value="${escapeHtml(trip?.endDate || "")}">
           ${fieldError(errors, "endDate")}
         </div>
       </div>
@@ -638,7 +602,7 @@ function renderTripForm({ trip = null, errors = {}, modeOverride = null } = {}) 
       <div class="form-grid">
         <div class="form-field">
           <label for="trip-budget">Budget totale</label>
-          <input id="trip-budget" name="budgetTotal" type="number" min="0" step="0.01" value="${escapeHtml(trip?.budgetTotal ?? 0)}" required>
+          <input id="trip-budget" name="budgetTotal" type="number" min="0" step="0.01" value="${escapeHtml(trip?.budgetTotal ?? 0)}">
           ${fieldError(errors, "budgetTotal")}
         </div>
 
@@ -683,6 +647,8 @@ function replaceOpenTripForm(trip = null, errors = {}, modeOverride = null) {
   }
 
   modalBody.innerHTML = renderTripForm({ trip, errors, modeOverride });
+  enhanceProgressiveForm(modalBody);
+  modalBody.querySelector(".form-details").open = true;
 }
 
 function openDeleteConfirmation(trip) {
@@ -967,6 +933,7 @@ function handleTripFormSubmit(event) {
       });
     });
     showToast("Viaggio creato.");
+    window.location.hash = `#/trip/${encodeURIComponent(trip.id)}`;
   }
 
   closeModal();
@@ -1099,7 +1066,7 @@ function handleHomeChange(event) {
   actionTarget.value = "";
 }
 
-function ensureHomeHandlers() {
+export function ensureHomeHandlers() {
   if (homeHandlersReady) {
     return;
   }
@@ -1118,7 +1085,7 @@ function renderEmptyState() {
       </div>
       <h2>Il tuo primo dossier di viaggio</h2>
       <p>Organizza budget, tappe, checklist e note in un unico posto. Anche offline.</p>
-      <button class="button button--primary" type="button" data-action="open-trip-form">Crea il primo dossier</button>
+      <button class="button button--primary" type="button" data-action="open-trip-form">Crea il primo viaggio</button>
       <button class="button button--ghost button--small" type="button" data-action="choose-import-file">Importa backup esistente</button>
       <input class="visually-hidden" id="backup-file-input" type="file" accept="application/json,.json" data-action="import-backup-file">
     </article>
@@ -1133,18 +1100,12 @@ function getTripBudgetLabel(budget, currency) {
     : "Nessuna spesa inserita";
 }
 
-function renderTripCard(trip, index = 0) {
+function renderTripCard(trip, index = 0, data) {
   const duration = calculateTripDuration(trip.startDate, trip.endDate);
   const countdown = calculateCountdown(trip.startDate, trip.endDate);
   const destinationCount = normalizeDestinations(trip.destinations).length;
   const accentClass = `trip-card--accent-${(index % TRIP_CARD_ACCENT_COUNT) + 1}`;
-  const budget = calculateDossierBudgetSummary(
-    trip,
-    getExpensesByTripId(trip.id),
-    getFlightsByTripId(trip.id),
-    getStaysByTripId(trip.id),
-    getActivitiesByTripId(trip.id)
-  );
+  const budget = summarizeBudget(trip, selectLedger(data, trip.id));
 
   return `
     <article class="trip-card ${accentClass}">
@@ -1157,8 +1118,8 @@ function renderTripCard(trip, index = 0) {
         <p class="trip-card__destinations">${formatDestinations(trip.destinations)}</p>
         <div class="trip-card__divider" aria-hidden="true"></div>
         <div class="trip-card__details">
-          <span>${formatDate(trip.startDate)} - ${formatDate(trip.endDate)}</span>
-          <span>${duration} giorni</span>
+          <span>${formatDestinationRange(trip.startDate, trip.endDate) || "Date da definire"}</span>
+          <span>${duration ? `${duration} giorni` : ""}</span>
         </div>
         <div class="trip-card__meta-row">
           <p class="trip-card__budget">${getTripBudgetLabel(budget, trip.currency)}</p>
@@ -1166,7 +1127,7 @@ function renderTripCard(trip, index = 0) {
         </div>
       </a>
       <div class="trip-card__actions" aria-label="Azioni viaggio">
-        <a class="button button--primary trip-card__open" href="#/trip/${encodeURIComponent(trip.id)}">Apri dossier &rarr;</a>
+        <a class="button button--primary trip-card__open" href="#/trip/${encodeURIComponent(trip.id)}">Apri viaggio &rarr;</a>
         <button class="button button--small button--ghost" type="button" data-action="edit-trip" data-trip-id="${escapeHtml(trip.id)}">Modifica</button>
         <button class="button button--small button--danger-ghost" type="button" data-action="delete-trip" data-trip-id="${escapeHtml(trip.id)}">Elimina</button>
       </div>
@@ -1174,36 +1135,37 @@ function renderTripCard(trip, index = 0) {
   `;
 }
 
-function renderTripList(trips) {
+function renderTripList(trips, data) {
   if (trips.length === 0) {
     return renderEmptyState();
   }
 
   return `
     <section class="trip-list" aria-label="Viaggi salvati">
-      ${trips.map((trip, index) => renderTripCard(trip, index)).join("")}
+      ${trips.map((trip, index) => renderTripCard(trip, index, data)).join("")}
     </section>
   `;
 }
 
 export function renderHomeView() {
   ensureHomeHandlers();
-  const trips = getTrips();
+  const data = getData();
+  const trips = data.trips;
 
   return `
     <section class="page" aria-labelledby="home-title">
       <header class="page__header home-hero">
         <div>
           <p class="page__eyebrow">Dossier viaggio</p>
-          <h1 class="page__title" id="home-title">Ithaca</h1>
-          <p class="page__summary">Ithaca organizza budget, tappe, checklist e note del viaggio in un unico dossier.</p>
+          <h1 class="page__title" id="home-title">I tuoi viaggi</h1>
+          <p class="page__summary">Tutti i tuoi viaggi. Ogni informazione, al suo posto.</p>
         </div>
         <div class="home-actions">
           <button class="button button--primary" type="button" data-action="open-trip-form">Nuovo viaggio</button>
         </div>
       </header>
 
-      ${renderTripList(trips)}
+      ${renderTripList(trips, data)}
     </section>
   `;
 }

@@ -1,10 +1,7 @@
 import { renderHomeView } from "./views/homeView.js";
-import {
-  renderActivitiesView,
-  renderFlightsView,
-  renderStaysView,
-  renderTripDashboardView
-} from "./views/tripDashboardView.js";
+import { renderTripDashboardView } from "./views/tripDashboardView.js";
+import { renderArchiveView } from "./views/archiveView.js";
+import { escapeHtml } from "./utils.js";
 import { renderTimelineView } from "./views/timelineView.js";
 import { renderBudgetView } from "./views/budgetView.js";
 import { renderChecklistView } from "./views/checklistView.js";
@@ -14,6 +11,8 @@ import { renderFab } from "./components/fab.js";
 import { getTripById } from "./storage.js";
 
 const ROUTES = [
+  { name: "Archivio", pattern: /^#\/trip\/([^/]+)\/archive\/?$/, render: renderArchiveView, tripPage: true },
+  { name: "Da pagare", pattern: /^#\/trip\/([^/]+)\/budget\/due\/?$/, render: context => renderBudgetView({ ...context, dueOnly: true }), tripPage: true },
   {
     name: "Home",
     pattern: /^#\/home\/?$/,
@@ -29,19 +28,19 @@ const ROUTES = [
   {
     name: "Voli",
     pattern: /^#\/trip\/([^/]+)\/flights\/?$/,
-    render: renderFlightsView,
+    render: context => renderArchiveView({ ...context, category: "flights" }),
     tripPage: true
   },
   {
     name: "Soggiorni",
     pattern: /^#\/trip\/([^/]+)\/stays\/?$/,
-    render: renderStaysView,
+    render: context => renderArchiveView({ ...context, category: "stays" }),
     tripPage: true
   },
   {
     name: "Attivita",
     pattern: /^#\/trip\/([^/]+)\/activities\/?$/,
-    render: renderActivitiesView,
+    render: context => renderArchiveView({ ...context, category: "activities" }),
     tripPage: true
   },
   {
@@ -70,6 +69,8 @@ const ROUTES = [
   }
 ];
 
+function safeDecode(value) { try { return decodeURIComponent(value); } catch { return value; } }
+
 function getCurrentHash() {
   return window.location.hash || "#/home";
 }
@@ -82,7 +83,7 @@ function matchRoute(hash) {
       return {
         ...route,
         params: {
-          tripId: match[1] ? decodeURIComponent(match[1]) : null
+          tripId: match[1] ? safeDecode(match[1]) : null
         }
       };
     }
@@ -97,7 +98,7 @@ function renderNotFound(hash) {
       <header class="page__header">
         <p class="page__eyebrow">Rotta non trovata</p>
         <h1 class="page__title" id="not-found-title">Qui non c'e ancora una mappa.</h1>
-        <p class="page__summary">La rotta <strong>${hash}</strong> non esiste nella shell iniziale.</p>
+        <p class="page__summary">La rotta <strong>${escapeHtml(hash)}</strong> non esiste nella shell iniziale.</p>
       </header>
       <a class="action-link" href="#/home">Torna alla home</a>
     </section>
@@ -119,7 +120,11 @@ function renderRouteStatus(routeStatus, routeName) {
 }
 
 export function initRouter({ app, routeStatus }) {
+  let previousHash = "";
   function render() {
+    const focused = document.activeElement;
+    const focusIdentity = focused?.id || "";
+    const focusAction = focused?.dataset ? { ...focused.dataset } : {};
     const hash = getCurrentHash();
     const route = matchRoute(hash);
 
@@ -134,12 +139,20 @@ export function initRouter({ app, routeStatus }) {
     const viewHtml = route.render({ params: route.params, hash });
     const showTripNav = route.tripPage && getTripById(route.params.tripId);
     const navHtml = showTripNav ? renderBottomNav(route.params.tripId, hash) : "";
-    const fabHtml = renderFab(hash);
+    const fabHtml = !route.tripPage || showTripNav ? renderFab(hash) : "";
 
     app.classList.toggle("has-bottom-nav", Boolean(showTripNav));
     app.innerHTML = viewHtml + navHtml + fabHtml;
     renderRouteStatus(routeStatus, route.name);
-    app.focus({ preventScroll: true });
+    if (hash !== previousHash) {
+      app.focus({ preventScroll: true });
+      window.scrollTo(0, 0);
+    } else {
+      const replacement = focusIdentity ? document.getElementById(focusIdentity) : [...app.querySelectorAll("[data-action]")].find(el => Object.keys(focusAction).length && Object.entries(focusAction).every(([key, value]) => el.dataset[key] === value));
+      const fallback = focusAction.action === "toggle-checklist-item" ? app.querySelector('[href$="/checklist"], [data-action="toggle-checklist-item"]') : null;
+      (replacement || fallback)?.focus({ preventScroll: true });
+    }
+    previousHash = hash;
   }
 
   window.addEventListener("hashchange", render);

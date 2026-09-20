@@ -6,64 +6,10 @@ const PLUS_ICON = `
   </svg>
 `;
 
-const ACTIONS = [
-  {
-    pattern: /^#\/home\/?$/,
-    action: "open-trip-form",
-    label: "Nuovo viaggio"
-  },
-  {
-    pattern: /^#\/trip\/([^/]+)\/flights\/?$/,
-    action: "open-flight-form",
-    label: "Aggiungi volo"
-  },
-  {
-    pattern: /^#\/trip\/([^/]+)\/stays\/?$/,
-    action: "open-stay-form",
-    label: "Aggiungi soggiorno"
-  },
-  {
-    pattern: /^#\/trip\/([^/]+)\/activities\/?$/,
-    action: "open-activity-form",
-    label: "Aggiungi attivita"
-  },
-  {
-    pattern: /^#\/trip\/([^/]+)\/budget\/?$/,
-    action: "open-expense-form",
-    label: "Aggiungi budget"
-  },
-  {
-    pattern: /^#\/trip\/([^/]+)\/timeline\/?$/,
-    action: "open-timeline-form",
-    label: "Aggiungi tappa"
-  },
-  {
-    pattern: /^#\/trip\/([^/]+)\/checklist\/?$/,
-    action: "open-checklist-form",
-    label: "Aggiungi task"
-  },
-  {
-    pattern: /^#\/trip\/([^/]+)\/notes\/?$/,
-    action: "open-note-form",
-    label: "Nuova nota"
-  }
-];
-
 export function renderFab(hash) {
-  const match = ACTIONS
-    .map((item) => ({ ...item, match: hash.match(item.pattern) }))
-    .find((item) => item.match);
-
-  if (!match) {
-    return "";
-  }
-
-  const tripId = match.match[1] ? decodeURIComponent(match.match[1]) : "";
-  const tripAttribute = tripId ? ` data-trip-id="${escapeHtml(tripId)}"` : "";
-
-  return `
-    <button class="fab" type="button" data-action="${match.action}"${tripAttribute} aria-label="${match.label}">
-      ${PLUS_ICON}
-    </button>
-  `;
+  const match = hash.match(/^#\/trip\/([^/]+)/);
+  let tripId = "";
+  try { tripId = match ? decodeURIComponent(match[1]) : ""; } catch { return ""; }
+  const action = tripId ? "open-quick-add" : "open-trip-form";
+  return `<button class="fab" type="button" data-action="${action}" data-trip-id="${escapeHtml(tripId)}" aria-label="${tripId ? "Aggiungi informazione" : "Nuovo viaggio"}" aria-haspopup="dialog">${PLUS_ICON}</button>`;
 }

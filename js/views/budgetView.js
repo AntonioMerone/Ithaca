@@ -1,43 +1,15 @@
+import { selectLedger, summarizeBudget } from "../selectors.js";
+import { renderRecordRow } from "../components/recordRow.js";
+import { getData } from "../storage.js";
 import { closeModal, openModal } from "../components/modal.js";
 import { showToast } from "../components/toast.js";
-import {
-  createExpense,
-  deleteExpense,
-  getActivitiesByTripId,
-  getExpenseById,
-  getExpensesByTripId,
-  getFlightsByTripId,
-  getStaysByTripId,
-  getTripById,
-  updateExpense
-} from "../storage.js";
-import { ensureDashboardHandlers } from "./tripDashboardView.js";
-import {
-  EXPENSE_CATEGORIES,
-  EXPENSE_STATUSES,
-  calculateDossierBudgetSummary,
-  escapeHtml,
-  formatCurrency,
-  formatDate,
-  getActivityTypeLabel,
-  getDossierPaymentStatusBadge,
-  getDossierPaymentStatusLabel,
-  getExpenseCategoryLabel,
-  getExpenseStatusLabel,
-  getPaymentBreakdown,
-  validatePaymentAllocation
-} from "../utils.js";
+import { createExpense, deleteExpense, getExpenseById, getTripById, updateExpense } from "../storage.js";
+import { ensureDashboardHandlers } from "./dossierForms.js";
+import { EXPENSE_STATUSES, escapeHtml, formatCurrency, getDossierPaymentStatusBadge, getExpenseStatusLabel, validatePaymentAllocation } from "../utils.js";
 
 const budgetFilters = new Map();
 let budgetHandlersReady = false;
 const ZERO_COST_WARNING_COPY = "Costo 0 € con pagamento segnato: controlla se il dato è corretto.";
-
-const ORIGIN_ORDER = {
-  manual: 0,
-  flight: 1,
-  stay: 2,
-  activity: 3
-};
 
 function getFilter(tripId) {
   return budgetFilters.get(tripId) || {
@@ -95,167 +67,8 @@ function renderSummaryCard(label, value) {
   `;
 }
 
-function getStatusBadgeClass(status) {
-  return getDossierPaymentStatusBadge(status);
-}
-
-function getStatusLabel(status) {
-  return status === "partial" ? "Parziale" : getExpenseStatusLabel(status);
-}
-
-function cleanLabel(value) {
-  return String(value || "").trim();
-}
-
-function getManualExpenseTypeLabel(category) {
-  const normalizedCategory = cleanLabel(category);
-
-  if (!normalizedCategory) {
-    return "";
-  }
-
-  return EXPENSE_CATEGORIES.includes(normalizedCategory)
-    ? getExpenseCategoryLabel(normalizedCategory)
-    : normalizedCategory;
-}
-
-function getFlightLedgerCopy(flight) {
-  const identity = [flight.airline, flight.flightNumber].map(cleanLabel).filter(Boolean).join(" ");
-  const route = [flight.from, flight.to].map(cleanLabel).filter(Boolean).join(" -> ");
-
-  return {
-    title: identity || route || "Volo",
-    meta: identity && route ? route : ""
-  };
-}
-
-function buildLedgerItems({ expenses, flights, stays, activities }) {
-  const manualItems = expenses.map((expense) => {
-    const breakdown = getPaymentBreakdown(expense, "amount", "status");
-    const categoryLabel = getManualExpenseTypeLabel(expense.category);
-
-    return {
-      id: expense.id,
-      origin: "manual",
-      source: "expenses",
-      originLabel: "Spesa",
-      title: expense.name || "Spesa manuale",
-      totalAmount: breakdown.totalAmount,
-      paidAmount: breakdown.paidAmount,
-      dueAmount: breakdown.dueAmount,
-      status: breakdown.status,
-      date: expense.date || "",
-      createdAt: expense.createdAt || "",
-      meta: categoryLabel,
-      typeLabel: categoryLabel,
-      notes: expense.notes || "",
-      editable: true
-    };
-  });
-
-  const flightItems = flights.map((flight) => {
-    const breakdown = getPaymentBreakdown(flight);
-    const copy = getFlightLedgerCopy(flight);
-
-    return {
-      id: flight.id,
-      origin: "flight",
-      source: "flights",
-      originLabel: "Volo",
-      title: copy.title,
-      totalAmount: breakdown.totalAmount,
-      paidAmount: breakdown.paidAmount,
-      dueAmount: breakdown.dueAmount,
-      status: breakdown.status,
-      date: flight.departureDate || "",
-      createdAt: flight.createdAt || "",
-      meta: copy.meta,
-      typeLabel: "Trasporto",
-      notes: flight.notes || "",
-      editable: true
-    };
-  });
-
-  const stayItems = stays.map((stay) => {
-    const breakdown = getPaymentBreakdown(stay);
-
-    return {
-      id: stay.id,
-      origin: "stay",
-      source: "stays",
-      originLabel: "Alloggio",
-      title: stay.structureName || "Alloggio",
-      totalAmount: breakdown.totalAmount,
-      paidAmount: breakdown.paidAmount,
-      dueAmount: breakdown.dueAmount,
-      status: breakdown.status,
-      date: stay.checkInDate || "",
-      createdAt: stay.createdAt || "",
-      meta: stay.bookingNumber ? `Prenotazione ${stay.bookingNumber}` : "",
-      typeLabel: "",
-      notes: stay.notes || "",
-      editable: true
-    };
-  });
-
-  const activityItems = activities.map((activity) => {
-    const breakdown = getPaymentBreakdown(activity);
-
-    return {
-      id: activity.id,
-      origin: "activity",
-      source: "activities",
-      originLabel: "Attivita",
-      title: activity.name || getActivityTypeLabel(activity.type),
-      totalAmount: breakdown.totalAmount,
-      paidAmount: breakdown.paidAmount,
-      dueAmount: breakdown.dueAmount,
-      status: breakdown.status,
-      date: activity.date || "",
-      createdAt: activity.createdAt || "",
-      typeLabel: getActivityTypeLabel(activity.type),
-      meta: [getActivityTypeLabel(activity.type), activity.location].filter(Boolean).join(" · "),
-      notes: activity.notes || "",
-      editable: true
-    };
-  });
-
-  return [...manualItems, ...flightItems, ...stayItems, ...activityItems];
-}
-
-function sortLedgerItems(items) {
-  return [...items].sort((a, b) => {
-    const aHasDate = Boolean(a.date);
-    const bHasDate = Boolean(b.date);
-
-    if (aHasDate !== bHasDate) {
-      return aHasDate ? -1 : 1;
-    }
-
-    if (aHasDate && bHasDate) {
-      const dateComparison = a.date.localeCompare(b.date);
-
-      if (dateComparison !== 0) {
-        return dateComparison;
-      }
-    }
-
-    const originComparison = ORIGIN_ORDER[a.origin] - ORIGIN_ORDER[b.origin];
-
-    if (originComparison !== 0) {
-      return originComparison;
-    }
-
-    return String(a.createdAt || "").localeCompare(String(b.createdAt || ""));
-  });
-}
-
 function filterLedgerItems(items, filters) {
-  return items.filter((item) => {
-    const statusMatch = filters.status === "all" || item.status === filters.status;
-    const sourceMatch = filters.source === "all" || item.source === filters.source;
-    return statusMatch && sourceMatch;
-  });
+  return items.filter(item => (filters.status === "all" || (filters.status === "due" ? item.dueAmount > 0 : item.status === filters.status)) && (filters.source === "all" || item.source === filters.source));
 }
 
 function renderSegmentedFilter({ tripId, label, action, activeValue, options, className = "" }) {
@@ -284,7 +97,7 @@ function renderFilters(tripId, filters) {
         className: "budget-status-filter",
         options: [
           ["all", "Tutte"],
-          ["unpaid", "Da pagare"],
+          ["due", "Da pagare"],
           ["partial", "Parziali"],
           ["paid", "Pagate"]
         ]
@@ -300,7 +113,7 @@ function renderFilters(tripId, filters) {
           ["flights", "Voli"],
           ["stays", "Alloggi"],
           ["activities", "Attivita"],
-          ["expenses", "Spese"]
+          ["expenses", "Spese"], ["timelineItems", "Eventi"]
         ]
       })}
     </section>
@@ -312,7 +125,7 @@ function renderEmptyState() {
     <article class="empty-state">
       <h2>Nessuna voce nel registro</h2>
       <p>Aggiungi una spesa o inserisci voli, soggiorni e attivita.</p>
-      <button class="button button--primary" type="button" data-action="open-expense-form">Aggiungi budget</button>
+      <button class="button button--primary" type="button" data-action="open-expense-form">Aggiungi spesa</button>
     </article>
   `;
 }
@@ -326,142 +139,10 @@ function renderNoFilterResults() {
   `;
 }
 
-function renderLedgerPayment(item, currency) {
-  return item.status === "partial"
-    ? `
-      <p class="payment-breakdown expense-card__payment">
-        Pagato ${formatCurrency(item.paidAmount, currency)} &middot; Da pagare ${formatCurrency(item.dueAmount, currency)}
-      </p>
-    `
-    : "";
-}
-
-function getLedgerStatusClass(status) {
-  const classes = {
-    paid: "is-paid",
-    unpaid: "is-unpaid",
-    partial: "is-partial"
-  };
-
-  return classes[status] || "is-unknown";
-}
-
-function getLedgerAmountClass(status) {
-  const classes = {
-    paid: "expense-card__amount--paid",
-    unpaid: "expense-card__amount--unpaid",
-    partial: "expense-card__amount--partial"
-  };
-
-  return classes[status] || "";
-}
-
-function getLedgerSourceIcon(source) {
-  const icons = {
-    flights: `<svg viewBox="0 0 24 24"><path d="M3 12h18M12 3l4 9-4 9-4-9 4-9Z"/></svg>`,
-    stays: `<svg viewBox="0 0 24 24"><path d="M4 11h16v8M6 11V7h12v4M8 15h8"/></svg>`,
-    activities: `<svg viewBox="0 0 24 24"><path d="M12 3v18M5 8h14M7 16h10"/></svg>`,
-    expenses: `<svg viewBox="0 0 24 24"><path d="M12 3v18M7 7h8a3 3 0 0 1 0 6H7m0 0h9a3 3 0 0 1 0 6H7"/></svg>`
-  };
-
-  return icons[source] || icons.expenses;
-}
-
-function getLedgerDateLabel(item) {
-  const labels = {
-    flights: "Data volo",
-    stays: "Check-in",
-    activities: "Data attività",
-    expenses: "Scadenza"
-  };
-
-  return labels[item.source] || "Data";
-}
-
-function renderLedgerActions(item) {
-  if (!item.editable) {
-    return "";
-  }
-
-  const editActions = {
-    expenses: {
-      action: "edit-expense",
-      idName: "expense-id",
-      label: "Azioni spesa manuale"
-    },
-    flights: {
-      action: "edit-flight",
-      idName: "flight-id",
-      label: "Azioni volo"
-    },
-    stays: {
-      action: "edit-stay",
-      idName: "stay-id",
-      label: "Azioni soggiorno"
-    },
-    activities: {
-      action: "edit-activity",
-      idName: "activity-id",
-      label: "Azioni attivita"
-    }
-  };
-  const editAction = editActions[item.source];
-
-  if (!editAction) {
-    return "";
-  }
-
-  return `
-    <div class="expense-card__actions" aria-label="${editAction.label}">
-      <button class="expense-card__edit" type="button" data-action="${editAction.action}" data-${editAction.idName}="${escapeHtml(item.id)}">Modifica</button>
-      ${item.source === "expenses" ? `<button class="expense-card__delete" type="button" data-action="delete-expense" data-expense-id="${escapeHtml(item.id)}">Elimina</button>` : ""}
-    </div>
-  `;
-}
-
-function renderLedgerCard(item, currency) {
-  const notes = String(item.notes || "").trim();
-  const metaItems = [
-    item.date ? `${getLedgerDateLabel(item)}: ${formatDate(item.date)}` : "",
-    item.meta || ""
-  ].filter(Boolean);
-
-  return `
-    <article class="expense-card expense-card--${escapeHtml(item.source)} ${getLedgerStatusClass(item.status)}">
-      <div class="expense-card__header">
-        <p class="expense-card__source">
-          <span class="expense-card__source-icon" aria-hidden="true">${getLedgerSourceIcon(item.source)}</span>
-          <span>${escapeHtml(item.originLabel)}</span>
-          ${item.typeLabel ? `<small>${escapeHtml(item.typeLabel)}</small>` : ""}
-        </p>
-        ${renderLedgerActions(item)}
-      </div>
-      <h2 class="expense-card__title">${escapeHtml(item.title)}</h2>
-      <div class="expense-card__money">
-        <strong class="expense-card__amount ${getLedgerAmountClass(item.status)}">${formatCurrency(item.totalAmount, currency)}</strong>
-        <span class="badge expense-card__badge ${getStatusBadgeClass(item.status)}">${escapeHtml(getStatusLabel(item.status))}</span>
-      </div>
-      ${renderLedgerPayment(item, currency)}
-      ${metaItems.length ? `<p class="expense-card__meta">${metaItems.map(escapeHtml).join(" &middot; ")}</p>` : ""}
-      ${notes ? `<p class="expense-card__notes">${escapeHtml(notes)}</p>` : ""}
-    </article>
-  `;
-}
-
 function renderLedgerList(allItems, filteredItems, currency) {
-  if (allItems.length === 0) {
-    return renderEmptyState();
-  }
-
-  if (filteredItems.length === 0) {
-    return renderNoFilterResults();
-  }
-
-  return `
-    <section class="expense-list" aria-label="Registro spese viaggio">
-      ${filteredItems.map((item) => renderLedgerCard(item, currency)).join("")}
-    </section>
-  `;
+  if (!allItems.length) return renderEmptyState();
+  if (!filteredItems.length) return renderNoFilterResults();
+  return `<div class="record-list">${filteredItems.map(item => renderRecordRow(item, currency, { deletable: item.source === "expenses", detail: `${item.categoryLabel} · Pagato ${formatCurrency(item.paidAmount, currency)} · Da pagare ${formatCurrency(item.dueAmount, currency)}` })).join("")}</div>`;
 }
 
 function renderErrorList(errors) {
@@ -556,7 +237,7 @@ function updatePaidAmountField(form) {
 
 function renderExpenseForm({ tripId, expense = null, errors = {}, modeOverride = null } = {}) {
   const mode = modeOverride || (expense?.id ? "edit" : "create");
-  const submitLabel = mode === "edit" ? "Salva modifiche" : "Aggiungi budget";
+  const submitLabel = mode === "edit" ? "Salva modifiche" : "Aggiungi spesa";
 
   return `
     <form class="trip-form" id="expense-form" novalidate>
@@ -574,13 +255,13 @@ function renderExpenseForm({ tripId, expense = null, errors = {}, modeOverride =
       <div class="form-grid">
         <div class="form-field">
           <label for="expense-category">Categoria</label>
-          <input id="expense-category" name="category" type="text" value="${escapeHtml(expense?.category || "")}" autocomplete="off" required>
+          <input id="expense-category" name="category" type="text" value="${escapeHtml(expense?.category || "")}" autocomplete="off">
           ${fieldError(errors, "category")}
         </div>
 
         <div class="form-field">
           <label for="expense-amount">Importo</label>
-          <input id="expense-amount" name="amount" type="number" min="0" step="0.01" value="${escapeHtml(expense?.amount ?? "")}" data-select-on-focus onfocus="this.select()" onclick="this.select()" required>
+          <input id="expense-amount" name="amount" type="number" min="0" step="0.01" value="${escapeHtml(expense?.amount ?? "")}" data-select-on-focus onfocus="this.select()" onclick="this.select()">
           ${fieldError(errors, "amount")}
         </div>
       </div>
@@ -626,20 +307,18 @@ function validateExpenseForm(formData) {
   const errors = {};
   const name = String(formData.get("name") || "").trim();
   const amountValue = String(formData.get("amount") || "").trim();
-  const category = String(formData.get("category") || "").trim();
+  const category = String(formData.get("category") || "other").trim();
   const status = String(formData.get("status") || "").trim();
   const paidAmount = parseOptionalAmount(formData.get("paidAmount"));
   const date = String(formData.get("date") || "").trim();
   const notes = String(formData.get("notes") || "").trim();
-  const amount = amountValue === "" ? "" : Number(amountValue);
+  const amount = amountValue === "" ? 0 : Number(amountValue);
 
   if (!name) {
     errors.name = "Nome spesa obbligatorio.";
   }
 
-  if (amountValue === "") {
-    errors.amount = "Importo obbligatorio.";
-  } else if (!Number.isFinite(amount) || amount < 0) {
+  if (!Number.isFinite(amount) || amount < 0) {
     errors.amount = "Importo deve essere un numero maggiore o uguale a 0.";
   }
 
@@ -681,7 +360,7 @@ function validateExpenseForm(formData) {
 
 function openExpenseForm(tripId, expense = null, errors = {}, modeOverride = null) {
   openModal({
-    title: modeOverride === "create" || !expense?.id ? "Aggiungi budget" : "Modifica budget",
+    title: modeOverride === "create" || !expense?.id ? "Aggiungi spesa" : "Modifica spesa",
     content: renderExpenseForm({ tripId, expense, errors, modeOverride }),
     confirmOnDirty: true
   });
@@ -747,11 +426,13 @@ function handleBudgetClick(event) {
 
   if (action === "filter-expense-status" && tripId) {
     setFilter(tripId, { status: actionTarget.dataset.filterValue || "all" });
+    if (location.hash.endsWith("/due")) location.hash = `#/trip/${encodeURIComponent(tripId)}/budget`;
     refreshView();
   }
 
   if (action === "filter-expense-source" && tripId) {
-    setFilter(tripId, { source: actionTarget.dataset.filterValue || "all" });
+    setFilter(tripId, { source: actionTarget.dataset.filterValue || "all", ...(location.hash.endsWith("/due") ? { status: "due" } : {}) });
+    if (location.hash.endsWith("/due")) location.hash = `#/trip/${encodeURIComponent(tripId)}/budget`;
     refreshView();
   }
 
@@ -839,7 +520,7 @@ function handleExpenseFormSubmit(event) {
   refreshView();
 }
 
-function ensureBudgetHandlers() {
+export function ensureBudgetHandlers() {
   if (budgetHandlersReady) {
     return;
   }
@@ -854,7 +535,7 @@ function ensureBudgetHandlers() {
   budgetHandlersReady = true;
 }
 
-export function renderBudgetView({ params }) {
+export function renderBudgetView({ params, dueOnly = false }) {
   ensureBudgetHandlers();
   ensureDashboardHandlers();
 
@@ -864,14 +545,13 @@ export function renderBudgetView({ params }) {
     return renderMissingTrip();
   }
 
-  const expenses = getExpensesByTripId(trip.id);
-  const flights = getFlightsByTripId(trip.id);
-  const stays = getStaysByTripId(trip.id);
-  const activities = getActivitiesByTripId(trip.id);
-  const ledgerItems = sortLedgerItems(buildLedgerItems({ expenses, flights, stays, activities }));
-  const filters = getFilter(trip.id);
+  const data = getData();
+  const ledgerItems = selectLedger(data, trip.id).sort((a, b) => (a.date || "9999").localeCompare(b.date || "9999"));
+  const filters = dueOnly ? { ...getFilter(trip.id), status: "due", source: "all" } : getFilter(trip.id);
   const filteredItems = filterLedgerItems(ledgerItems, filters);
-  const summary = calculateDossierBudgetSummary(trip, expenses, flights, stays, activities);
+  const summary = summarizeBudget(trip, ledgerItems);
+  const categories = new Map();
+  ledgerItems.forEach(item => categories.set(item.categoryLabel, (categories.get(item.categoryLabel) || 0) + Math.round(item.totalAmount * 100)));
   const currency = trip.currency || "EUR";
   const encodedTripId = encodeURIComponent(trip.id);
 
@@ -879,21 +559,24 @@ export function renderBudgetView({ params }) {
     <section class="page budget-page" data-budget-trip-id="${escapeHtml(trip.id)}" aria-labelledby="budget-title">
       <header class="page__header">
         <div>
-          <p class="page__eyebrow">Registro spese</p>
-          <h1 class="page__title" id="budget-title">${escapeHtml(trip.name)}</h1>
+          <p class="page__eyebrow">${escapeHtml(trip.name)}</p>
+          <h1 class="page__title" id="budget-title">Budget</h1>
           <p class="page__summary">Quanto costa il viaggio, quanto hai gia pagato e quanto resta da pagare.</p>
         </div>
-        <a class="button button--ghost dossier-back-link" href="#/trip/${encodedTripId}">&larr; Dossier</a>
+        <a class="button button--ghost dossier-back-link" href="#/trip/${encodedTripId}">&larr; Viaggio</a>
       </header>
 
       <section class="budget-summary-grid" aria-label="Riepilogo registro spese">
-        ${renderSummaryCard("Totale viaggio", formatCurrency(summary.plannedTotal, currency))}
+        ${renderSummaryCard("Totale previsto", formatCurrency(summary.plannedTotal, currency))}
         ${renderSummaryCard("Gia pagato", formatCurrency(summary.paidTotal, currency))}
         ${renderSummaryCard("Da pagare", formatCurrency(summary.unpaidTotal, currency))}
       </section>
 
+      ${summary.budgetTotal ? `<div class="budget-limit"><p>Budget: <strong>${formatCurrency(summary.budgetTotal, currency)}</strong> · ${summary.isOverBudget ? `Oltre di ${formatCurrency(-summary.remaining, currency)}` : `Disponibili ${formatCurrency(summary.remaining, currency)}`}</p><progress max="${summary.budgetTotal}" value="${Math.min(summary.plannedTotal, summary.budgetTotal)}" aria-label="Budget utilizzato"></progress></div>` : ""}
+      <button class="text-link" type="button" data-action="edit-trip" data-trip-id="${escapeHtml(trip.id)}">${summary.budgetTotal ? "Modifica limite" : "Imposta un budget"}</button>
+      ${categories.size ? `<details class="budget-categories"><summary>Per categoria</summary><dl>${[...categories].map(([label, amount]) => `<div><dt>${escapeHtml(label)}</dt><dd>${formatCurrency(amount / 100, currency)}</dd></div>`).join("")}</dl></details>` : ""}
       <div class="budget-toolbar">
-        <button class="button button--primary" type="button" data-action="open-expense-form" data-trip-id="${escapeHtml(trip.id)}">Aggiungi budget</button>
+        <button class="button button--primary" type="button" data-action="open-expense-form" data-trip-id="${escapeHtml(trip.id)}">Aggiungi spesa</button>
         ${renderFilters(trip.id, filters)}
       </div>
 

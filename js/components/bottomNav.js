@@ -1,6 +1,6 @@
 const ITEMS = [
   {
-    label: "Dashboard",
+    label: "Viaggio",
     icon: `<svg viewBox="0 0 24 24" focusable="false"><path d="M4 13h6V4H4v9Zm10 7h6V4h-6v16ZM4 20h6v-5H4v5Z"/></svg>`,
     path: ""
   },
@@ -15,14 +15,9 @@ const ITEMS = [
     path: "/budget"
   },
   {
-    label: "Checklist",
-    icon: `<svg viewBox="0 0 24 24" focusable="false"><path d="m9 7-1.4 1.4L10.2 11l5.2-5.2L14 4.4 10.2 8.2 9 7Zm-3 7h12v2H6v-2Zm0 4h12v2H6v-2Z"/></svg>`,
-    path: "/checklist"
-  },
-  {
-    label: "Note",
-    icon: `<svg viewBox="0 0 24 24" focusable="false"><path d="M6 3h9l3 3v15H6V3Zm8 2H8v14h8V7h-2V5Zm-4 6h4v2h-4v-2Zm0 4h4v2h-4v-2Z"/></svg>`,
-    path: "/notes"
+    label: "Archivio",
+    icon: `<svg viewBox="0 0 24 24" focusable="false"><path d="M3 4h18v5H3V4Zm2 7h14v10H5V11Zm4 2v2h6v-2H9Z"/></svg>`,
+    path: "/archive"
   }
 ];
 
@@ -32,7 +27,8 @@ export function renderBottomNav(tripId, currentHash) {
 
   const links = ITEMS.map((item) => {
     const href = `${basePath}${item.path}`;
-    const isActive = currentHash === href || (!item.path && currentHash === `${basePath}/`);
+    const suffix = currentHash.slice(basePath.length).replace(/\/$/, "");
+    const isActive = item.path === "/archive" ? ["/archive", "/flights", "/stays", "/activities", "/notes", "/checklist"].includes(suffix) : item.path === "/budget" ? suffix.startsWith("/budget") : suffix === item.path;
 
     return `
       <a class="bottom-nav__link" href="${href}" ${isActive ? 'aria-current="page"' : ""}>

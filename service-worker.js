@@ -1,4 +1,4 @@
-const CACHE_NAME = "ithaca-shell-v21-7";
+const CACHE_NAME = "ithaca-shell-v22-2";
 
 const APP_SHELL = [
   "./",
@@ -17,6 +17,13 @@ const APP_SHELL = [
   "./css/base.css",
   "./css/components.css",
   "./css/layout.css",
+  "./css/workspace.css",
+  "./js/selectors.js",
+  "./js/views/dossierForms.js",
+  "./js/views/archiveView.js",
+  "./js/components/recordRow.js",
+  "./js/components/progressiveForm.js",
+  "./js/components/tripActions.js",
   "./js/app.js",
   "./js/router.js",
   "./js/storage.js",
@@ -41,28 +48,25 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches
-      .keys()
-      .then((keys) =>
-        Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))
-      )
-  );
-  self.clients.claim();
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(key => key.startsWith("ithaca-shell-") && key !== CACHE_NAME).map(key => caches.delete(key)));
+    await self.clients.claim();
+  })());
 });
 
 self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") {
-    return;
-  }
-
-  event.respondWith(
-    fetch(event.request)
-      .then((networkResponse) => {
-        const responseClone = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
-        return networkResponse;
-      })
-      .catch(() => caches.match(event.request))
-  );
+  const url = new URL(event.request.url);
+  if (event.request.method !== "GET" || url.origin !== self.location.origin || !url.href.startsWith(self.registration.scope)) return;
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    // The entire module graph belongs to one release, including offline loads.
+    const cached = await cache.match(event.request);
+    if (cached) return cached;
+    if (event.request.mode === "navigate") {
+      const shell = await cache.match(new URL("./index.html", self.registration.scope));
+      if (shell) return shell;
+    }
+    return fetch(event.request);
+  })());
 });

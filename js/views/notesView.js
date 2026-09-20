@@ -1,22 +1,7 @@
 import { closeModal, openModal } from "../components/modal.js";
 import { showToast } from "../components/toast.js";
-import {
-  createNote,
-  deleteNote,
-  getNoteById,
-  getNotesByTripId,
-  getTripById,
-  updateNote
-} from "../storage.js";
-import {
-  escapeHtml,
-  filterNotesByDestination,
-  formatDate,
-  getNoteDestinations,
-  getNotePreview,
-  searchNotes,
-  sortNotes
-} from "../utils.js";
+import { createNote, deleteNote, getNoteById, getNotesByTripId, getTripById, updateNote } from "../storage.js";
+import { escapeHtml, filterNotesByDestination, formatDate, getNoteDestinations, getNotePreview, searchNotes, sortNotes } from "../utils.js";
 
 const notesFilters = new Map();
 let notesHandlersReady = false;
@@ -239,7 +224,7 @@ function renderNoteForm({ tripId, note = null, errors = {}, modeOverride = null 
 
       <div class="form-field">
         <label for="note-title-input">Titolo</label>
-        <input id="note-title-input" name="title" type="text" value="${escapeHtml(note?.title || "")}" autocomplete="off" required>
+        <input id="note-title-input" name="title" type="text" value="${escapeHtml(note?.title || "")}" autocomplete="off">
         ${fieldError(errors, "title")}
       </div>
 
@@ -250,7 +235,7 @@ function renderNoteForm({ tripId, note = null, errors = {}, modeOverride = null 
 
       <div class="form-field">
         <label for="note-content-input">Contenuto</label>
-        <textarea id="note-content-input" class="note-content-input" name="content" rows="8" required>${escapeHtml(note?.content || "")}</textarea>
+        <textarea id="note-content-input" class="note-content-input" name="content" rows="4">${escapeHtml(note?.content || "")}</textarea>
         ${fieldError(errors, "content")}
       </div>
 
@@ -264,16 +249,12 @@ function renderNoteForm({ tripId, note = null, errors = {}, modeOverride = null 
 
 function validateNoteForm(formData) {
   const errors = {};
-  const title = String(formData.get("title") || "").trim();
+  const title = String(formData.get("title") || "").trim() || String(formData.get("content") || "").trim().slice(0, 60);
   const destination = String(formData.get("destination") || "").trim();
   const content = String(formData.get("content") || "").trim();
 
   if (!title) {
     errors.title = "Titolo obbligatorio.";
-  }
-
-  if (!content) {
-    errors.content = "Contenuto obbligatorio.";
   }
 
   return {
@@ -410,7 +391,7 @@ function handleNoteSubmit(event) {
   refreshView();
 }
 
-function ensureNotesHandlers() {
+export function ensureNotesHandlers() {
   if (notesHandlersReady) {
     return;
   }
@@ -439,11 +420,11 @@ export function renderNotesView({ params }) {
     <section class="page notes-page" data-notes-trip-id="${escapeHtml(trip.id)}" aria-labelledby="notes-title">
       <header class="page__header">
         <div>
-          <p class="page__eyebrow">Note</p>
-          <h1 class="page__title" id="notes-title">${escapeHtml(trip.name)}</h1>
+          <p class="page__eyebrow">${escapeHtml(trip.name)}</p>
+          <h1 class="page__title" id="notes-title">Note</h1>
           <p class="page__summary">Appunti, idee e dettagli utili del viaggio.</p>
         </div>
-        <a class="button button--ghost dossier-back-link" href="#/trip/${encodedTripId}">&larr; Dossier</a>
+        <a class="button button--ghost dossier-back-link" href="#/trip/${encodedTripId}">&larr; Viaggio</a>
       </header>
 
       ${renderSummary(notes)}

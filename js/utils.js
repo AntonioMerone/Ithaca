@@ -56,11 +56,12 @@ function parseDate(value) {
 
   const [year, month, day] = String(value).split("-").map(Number);
 
-  if (!year || !month || !day) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value)) || !year || !month || !day) {
     return null;
   }
 
-  return new Date(year, month - 1, day);
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : null;
 }
 
 function startOfToday() {
@@ -88,7 +89,8 @@ export function formatDate(value, locale = "it-IT") {
 }
 
 export function formatCurrency(value, currency = "EUR", locale = "it-IT") {
-  const amount = Number(value || 0);
+  const amount = Number.isFinite(Number(value)) ? Number(value) : 0;
+  currency = /^[A-Z]{3}$/.test(String(currency)) ? currency : "EUR";
   const symbol = {
     EUR: "\u20ac",
     USD: "$",
@@ -164,6 +166,7 @@ export function normalizeDestinations(destinations = [], trip = {}) {
       }
 
       return {
+        ...destination,
         id: String(destination.id || generateId("dest")),
         name: String(destination.name || "").trim(),
         arrivalDate: normalizeDateValue(destination.arrivalDate),
@@ -251,29 +254,6 @@ export function getNextDestination(destinations = [], today = null) {
     .sort((a, b) => a.arrivalDate.localeCompare(b.arrivalDate))[0] || null;
 }
 
-export function calculateBudgetSummary(trip, expenses = []) {
-  const budgetTotal = Number(trip?.budgetTotal || 0);
-  const paidTotal = expenses.reduce((total, expense) => total + getPaymentBreakdown(expense, "amount", "status").paidAmount, 0);
-  const unpaidTotal = expenses.reduce((total, expense) => total + getPaymentBreakdown(expense, "amount", "status").dueAmount, 0);
-  const plannedTotal = paidTotal + unpaidTotal;
-  const difference = budgetTotal - plannedTotal;
-
-  return {
-    budgetTotal,
-    paidTotal,
-    unpaidTotal,
-    plannedTotal,
-    remaining: difference,
-    difference,
-    isOverBudget: plannedTotal > budgetTotal
-  };
-}
-
-function getDossierItemCost(item) {
-  const amount = Number(item?.cost || 0);
-  return Number.isFinite(amount) && amount > 0 ? amount : 0;
-}
-
 function normalizeLedgerAmount(value) {
   const amount = Number(value || 0);
   return Number.isFinite(amount) && amount > 0 ? amount : 0;
@@ -339,29 +319,6 @@ export function validatePaymentAllocation({ totalAmount = 0, paymentStatus = "un
     error: "",
     paidAmount: safeTotal,
     paymentStatus: status
-  };
-}
-
-export function calculateDossierBudgetSummary(trip, expenses = [], flights = [], stays = [], activities = []) {
-  const budgetTotal = Number(trip?.budgetTotal || 0);
-  const manualPaidTotal = expenses.reduce((total, expense) => total + getPaymentBreakdown(expense, "amount", "status").paidAmount, 0);
-  const manualUnpaidTotal = expenses.reduce((total, expense) => total + getPaymentBreakdown(expense, "amount", "status").dueAmount, 0);
-  const dossierItems = [...flights, ...stays, ...activities];
-  const dossierPaidTotal = dossierItems.reduce((total, item) => total + getPaymentBreakdown(item).paidAmount, 0);
-  const dossierUnpaidTotal = dossierItems.reduce((total, item) => total + getPaymentBreakdown(item).dueAmount, 0);
-  const paidTotal = manualPaidTotal + dossierPaidTotal;
-  const unpaidTotal = manualUnpaidTotal + dossierUnpaidTotal;
-  const plannedTotal = paidTotal + unpaidTotal;
-
-  return {
-    budgetTotal,
-    paidTotal,
-    unpaidTotal,
-    plannedTotal,
-    totalTrip: plannedTotal,
-    dueTotal: unpaidTotal,
-    manualPlannedTotal: manualPaidTotal + manualUnpaidTotal,
-    dossierPlannedTotal: dossierPaidTotal + dossierUnpaidTotal
   };
 }
 
@@ -634,7 +591,7 @@ export function getNotePreview(content = "", maxLength = 120) {
 
 export function sortTimelineItems(items = []) {
   return [...items].sort((a, b) => {
-    const dateComparison = String(a.date || "").localeCompare(String(b.date || ""));
+    const dateComparison = String(a.date || "9999-12-31").localeCompare(String(b.date || "9999-12-31"));
 
     if (dateComparison !== 0) {
       return dateComparison;
@@ -722,11 +679,9 @@ export function determineTripStatus(startDate, endDate) {
   const start = parseDate(startDate);
   const end = parseDate(endDate);
 
-  if (!start) {
-    return "future";
-  }
-
   const today = startOfToday();
+  if (end && today > end) return "past";
+  if (!start) return "undated";
   const daysToStart = daysBetween(today, start);
 
   if (daysToStart > 0) {
@@ -737,7 +692,7 @@ export function determineTripStatus(startDate, endDate) {
     return "starts_today";
   }
 
-  if (end && today <= end) {
+  if (!end || today <= end) {
     return "ongoing";
   }
 

@@ -1,26 +1,10 @@
+import { getData } from "../storage.js";
+import { selectTimeline } from "../selectors.js";
+import { renderRecordRow } from "../components/recordRow.js";
 import { closeModal, openModal } from "../components/modal.js";
 import { showToast } from "../components/toast.js";
-import {
-  createTimelineItem,
-  deleteTimelineItem,
-  getTimelineItemById,
-  getTimelineItemsByTripId,
-  getTripById,
-  updateTimelineItem
-} from "../storage.js";
-import {
-  TIMELINE_PAYMENT_STATUSES,
-  TIMELINE_TYPES,
-  escapeHtml,
-  formatCurrency,
-  formatDate,
-  getNextTimelineItem,
-  getTimelinePaymentStatusLabel,
-  getTimelineTypeIcon,
-  getTimelineTypeLabel,
-  groupTimelineItemsByDate,
-  sortTimelineItems
-} from "../utils.js";
+import { createTimelineItem, deleteTimelineItem, getTimelineItemById, getTripById, updateTimelineItem } from "../storage.js";
+import { TIMELINE_PAYMENT_STATUSES, TIMELINE_TYPES, escapeHtml, formatDate, formatDestinationRange, getNextTimelineItem, getTimelinePaymentStatusLabel, getTimelineTypeLabel, groupTimelineItemsByDate } from "../utils.js";
 
 const timelineFilters = new Map();
 let timelineHandlersReady = false;
@@ -58,28 +42,6 @@ function renderMissingTrip() {
   `;
 }
 
-function renderSummary(trip, items) {
-  const nextItem = getNextTimelineItem(items);
-  const countText = items.length === 1 ? "1 elemento pianificato" : `${items.length} elementi pianificati`;
-
-  return `
-    <article class="timeline-summary">
-      <div>
-        <span>Timeline</span>
-        <strong>${items.length ? countText : "Nessuna tappa inserita"}</strong>
-      </div>
-      <div>
-        <span>Prossima attivita</span>
-        <strong>${nextItem ? escapeHtml(nextItem.title) : "Nessuna attivita futura"}</strong>
-      </div>
-      <div>
-        <span>Date viaggio</span>
-        <strong>${formatDate(trip.startDate)} - ${formatDate(trip.endDate)}</strong>
-      </div>
-    </article>
-  `;
-}
-
 function renderFilters(tripId, activeType) {
   return `
     <section class="timeline-filters" aria-label="Filtri timeline">
@@ -93,12 +55,12 @@ function renderFilters(tripId, activeType) {
   `;
 }
 
-function renderEmptyState() {
+function renderEmptyState(trip) {
   return `
     <article class="empty-state">
-      <h2>Nessuna tappa ancora</h2>
-      <p>Costruisci la timeline del viaggio giorno per giorno, dalle partenze alle attivita.</p>
-      <button class="button button--primary" type="button" data-action="open-timeline-form">Aggiungi tappa</button>
+      <h2>Nessun evento con una data</h2>
+      <p>Le informazioni con una data appariranno qui automaticamente.</p>
+      <button class="button button--primary" type="button" data-action="open-quick-add" data-trip-id="${escapeHtml(trip.id)}">+ Aggiungi</button>
     </article>
   `;
 }
@@ -112,60 +74,13 @@ function renderNoFilterResults() {
   `;
 }
 
-function renderTimelinePayment(item, currency) {
-  const hasCost = Number(item.cost || 0) > 0;
-  const hasPayment = item.paymentStatus && item.paymentStatus !== "none";
-
-  if (!hasCost && !hasPayment) {
-    return "";
-  }
-
-  const parts = [];
-
-  if (hasCost) {
-    parts.push(formatCurrency(item.cost, currency));
-  }
-
-  if (hasPayment) {
-    parts.push(getTimelinePaymentStatusLabel(item.paymentStatus));
-  }
-
-  return `<p class="timeline-item__payment">${parts.map(escapeHtml).join(" &middot; ")}</p>`;
-}
-
 function renderTimelineItem(item, currency) {
-  const notes = String(item.notes || "").trim();
-  const location = String(item.location || "").trim();
-
-  return `
-    <article class="timeline-item-card">
-      <div class="timeline-item-card__time">${item.time ? escapeHtml(item.time) : "Senza ora"}</div>
-      <div class="timeline-item-card__body">
-        <div class="timeline-item-card__header">
-          <span class="timeline-type-icon" aria-hidden="true">${getTimelineTypeIcon(item.type)}</span>
-          <div>
-            <h3>${escapeHtml(item.title)}</h3>
-            <p class="expense-card__meta">
-              <span class="badge">${getTimelineTypeLabel(item.type)}</span>
-              ${item.paymentStatus !== "none" ? `<span class="badge ${item.paymentStatus === "paid" ? "badge--success" : "badge--warning"}">${getTimelinePaymentStatusLabel(item.paymentStatus)}</span>` : ""}
-            </p>
-          </div>
-        </div>
-        ${location ? `<p class="timeline-item__location">${escapeHtml(location)}</p>` : ""}
-        ${renderTimelinePayment(item, currency)}
-        ${notes ? `<p class="expense-card__notes">${escapeHtml(notes)}</p>` : ""}
-        <div class="trip-card__actions" aria-label="Azioni tappa">
-          <button class="button button--small button--ghost" type="button" data-action="edit-timeline-item" data-item-id="${escapeHtml(item.id)}">Modifica</button>
-          <button class="button button--small button--danger-ghost" type="button" data-action="delete-timeline-item" data-item-id="${escapeHtml(item.id)}">Elimina</button>
-        </div>
-      </div>
-    </article>
-  `;
+  return renderRecordRow({ ...item, totalAmount: 0 }, currency, { deletable: item.source === "timelineItems", detail: item.location || "" });
 }
 
 function renderTimelineList(allItems, filteredItems, trip) {
   if (allItems.length === 0) {
-    return renderEmptyState();
+    return renderEmptyState(trip);
   }
 
   if (filteredItems.length === 0) {
@@ -178,7 +93,7 @@ function renderTimelineList(allItems, filteredItems, trip) {
     <section class="timeline-list" aria-label="Lista timeline">
       ${Object.entries(groups).map(([date, items]) => `
         <section class="timeline-day" aria-labelledby="timeline-day-${escapeHtml(date)}">
-          <h2 class="timeline-day__title" id="timeline-day-${escapeHtml(date)}">${formatDate(date)}</h2>
+          <h2 class="timeline-day__title" id="timeline-day-${escapeHtml(date)}">${date === "senza-data" ? "Senza data" : formatDate(date)}</h2>
           <div class="timeline-day__items">
             ${items.map((item) => renderTimelineItem(item, trip.currency || "EUR")).join("")}
           </div>
@@ -229,7 +144,7 @@ function renderTimelineForm({ trip, item = null, errors = {}, modeOverride = nul
           <label for="timeline-type-input">Tipo</label>
           <select id="timeline-type-input" name="type" required>
             ${TIMELINE_TYPES.map((type) => `
-              <option value="${type}" ${item?.type === type ? "selected" : ""}>${getTimelineTypeLabel(type)}</option>
+              <option value="${type}" ${(item?.type || "other") === type ? "selected" : ""}>${getTimelineTypeLabel(type)}</option>
             `).join("")}
           </select>
           ${fieldError(errors, "type")}
@@ -237,7 +152,7 @@ function renderTimelineForm({ trip, item = null, errors = {}, modeOverride = nul
 
         <div class="form-field">
           <label for="timeline-date-input">Data</label>
-          <input id="timeline-date-input" name="date" type="date" value="${escapeHtml(item?.date || "")}" data-trip-start="${escapeHtml(trip.startDate)}" data-trip-end="${escapeHtml(trip.endDate)}" required>
+          <input id="timeline-date-input" name="date" type="date" value="${escapeHtml(item?.date || "")}" data-trip-start="${escapeHtml(trip.startDate)}" data-trip-end="${escapeHtml(trip.endDate)}">
           <p class="field-warning ${showDateWarning ? "" : "is-hidden"}" id="timeline-date-warning">Questa data e fuori dalle date del viaggio.</p>
           ${fieldError(errors, "date")}
         </div>
@@ -266,13 +181,15 @@ function renderTimelineForm({ trip, item = null, errors = {}, modeOverride = nul
           <label for="timeline-payment-input">Stato pagamento</label>
           <select id="timeline-payment-input" name="paymentStatus" required>
             ${TIMELINE_PAYMENT_STATUSES.map((status) => `
-              <option value="${status}" ${item?.paymentStatus === status ? "selected" : ""}>${getTimelinePaymentStatusLabel(status)}</option>
+              <option value="${status}" ${(item?.paymentStatus || "none") === status ? "selected" : ""}>${getTimelinePaymentStatusLabel(status)}</option>
             `).join("")}
           </select>
           ${fieldError(errors, "paymentStatus")}
         </div>
       </div>
 
+      <label class="checkbox-row"><input type="checkbox" name="includeInBudget" ${item?.includeInBudget ? "checked" : ""}><span>Includi questo costo nel Budget</span></label>
+      <p class="field-help">Attiva solo se questo costo non è già registrato in un volo, soggiorno, attività o spesa.</p>
       <div class="form-field">
         <label for="timeline-notes-input">Note opzionali</label>
         <textarea id="timeline-notes-input" name="notes" rows="4">${escapeHtml(item?.notes || "")}</textarea>
@@ -306,10 +223,6 @@ function validateTimelineForm(formData) {
     errors.type = "Tipo obbligatorio.";
   }
 
-  if (!date) {
-    errors.date = "Data obbligatoria.";
-  }
-
   if (costValue !== "" && (!Number.isFinite(cost) || cost < 0)) {
     errors.cost = "Costo deve essere un numero maggiore o uguale a 0.";
   }
@@ -328,6 +241,7 @@ function validateTimelineForm(formData) {
       location,
       cost,
       paymentStatus,
+      includeInBudget: formData.has("includeInBudget"),
       notes
     }
   };
@@ -455,7 +369,7 @@ function handleTimelineSubmit(event) {
   refreshView();
 }
 
-function ensureTimelineHandlers() {
+export function ensureTimelineHandlers() {
   if (timelineHandlersReady) {
     return;
   }
@@ -476,7 +390,7 @@ export function renderTimelineView({ params }) {
     return renderMissingTrip();
   }
 
-  const items = sortTimelineItems(getTimelineItemsByTripId(trip.id));
+  const items = selectTimeline(getData(), trip.id);
   const activeType = getFilter(trip.id);
   const filteredItems = activeType === "all" ? items : items.filter((item) => item.type === activeType);
   const encodedTripId = encodeURIComponent(trip.id);
@@ -485,17 +399,17 @@ export function renderTimelineView({ params }) {
     <section class="page timeline-page" data-timeline-trip-id="${escapeHtml(trip.id)}" aria-labelledby="timeline-title">
       <header class="page__header">
         <div>
-          <p class="page__eyebrow">Timeline</p>
-          <h1 class="page__title" id="timeline-title">${escapeHtml(trip.name)}</h1>
-          <p class="page__summary">${formatDate(trip.startDate)} - ${formatDate(trip.endDate)}</p>
+          <p class="page__eyebrow">${escapeHtml(trip.name)}</p>
+          <h1 class="page__title" id="timeline-title">Timeline</h1>
+          <p class="page__summary">${formatDestinationRange(trip.startDate, trip.endDate)}</p>
         </div>
-        <a class="button button--ghost dossier-back-link" href="#/trip/${encodedTripId}">&larr; Dossier</a>
+        <a class="button button--ghost dossier-back-link" href="#/trip/${encodedTripId}">&larr; Viaggio</a>
       </header>
 
-      ${renderSummary(trip, items)}
+      <p class="quiet-message">Voli, soggiorni e attività compaiono qui automaticamente. Tocca un evento per modificarlo.</p>
 
       <div class="budget-toolbar">
-        <button class="button button--primary" type="button" data-action="open-timeline-form" data-trip-id="${escapeHtml(trip.id)}">Aggiungi tappa</button>
+
         ${renderFilters(trip.id, activeType)}
       </div>
 
